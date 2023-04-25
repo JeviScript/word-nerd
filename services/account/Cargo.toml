@@ -1,0 +1,24 @@
+[package]
+name = "account"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "account-ms"
+path = "src/main.rs"
+
+[dependencies]
+rpc = { path = "../../rpc" }
+
+tonic = "0.9.1"
+tonic-health = "0.9.1"
+jwt = { version = "0.16.0", features = ["openssl"] }
+openssl = "0.10.45"
+base64 = "0.21.0"
+reqwest = { version = "0.11.14", features = ["json", "rustls-tls"] }
+tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
+mongodb = "2.5.0"
+
+

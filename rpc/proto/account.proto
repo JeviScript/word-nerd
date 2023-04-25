@@ -1,0 +1,23 @@
+syntax = "proto3";
+package account;
+
+service Account {
+    rpc Authenticate (AuthRequest) returns (AuthResponse);
+    rpc GoogleSignIn (GoogleSignInRequest) returns (GoogleSignInResponse);
+}
+
+message GoogleSignInRequest {
+    string credential = 1;
+}
+
+message GoogleSignInResponse {
+    bool success = 1;
+}
+
+message AuthRequest {
+    string token = 1;
+}
+
+message AuthResponse {
+    bool success = 1;
+}

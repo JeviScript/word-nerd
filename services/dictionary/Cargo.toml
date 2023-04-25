@@ -1,0 +1,14 @@
+[package]
+name = "dictionary"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "dictionary-ms"
+path = "src/main.rs"
+
+[dependencies]
+tonic = "0.9.1"
+tonic-health = "0.9.1"
+rpc = { path = "../../rpc" }
+tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros"] }

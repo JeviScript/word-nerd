@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+
+  web-client:
+    build: 
+      context: .
+      dockerfile: ./local.Dockerfile
+      target: node_base
+    volumes: 
+      - ../web-client:/code/web-client
+    working_dir: /code/web-client
+    entrypoint: ["npm", "run", "dev"]
+
+  web-api:
+    build: 
+      context: .
+      dockerfile: ./local.Dockerfile
+      target: rust_base
+    volumes: 
+      - ../web-api:/code/web-api
+      - ../rpc/:/code/rpc/
+    working_dir: /code/web-api
+    entrypoint: ["cargo", "watch", "-x", "'run'"]
+
+  account:
+    build: 
+      context: .
+      dockerfile: ./local.Dockerfile
+      target: rust_ms
+    volumes: 
+      - ../services/account:/code/services/account 
+      - ../rpc/:/code/rpc/
+    working_dir: /code/services/account
+    entrypoint: ["cargo", "watch", "-x", "'run'"]
+
+  dictionary:
+    build: 
+      context: .
+      dockerfile: ./local.Dockerfile
+      target: rust_ms
+    volumes: 
+      - ../services/dictionary:/code/services/dictionary
+      - ../rpc/:/code/rpc/
+    working_dir: /code/services/dictionary
+    entrypoint: ["cargo", "watch", "-x", "'run'"]
+

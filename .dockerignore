@@ -1,0 +1,6 @@
+**/target
+**/Dockerfile
+**/Cargo.lock
+**/*.rs.bk
+**/.git
+
