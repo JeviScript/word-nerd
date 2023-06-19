@@ -1,11 +1,19 @@
 use mongodb::bson::doc;
+use mongodb::options::ClientOptions;
 use mongodb::{bson::Document, Collection};
+use mongodb::{Client, Database};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
-use crate::AccountService;
 
 pub enum CollectionName {
     GoogleUsers,
+}
+
+impl From<CollectionName> for &str {
+    fn from(c: CollectionName) -> Self {
+        match c {
+            CollectionName::GoogleUsers => "google_users",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -37,20 +45,50 @@ impl FindOneFilter for GoogleUser {
     }
 }
 
-impl From<CollectionName> for &str {
-    fn from(c: CollectionName) -> Self {
-        match c {
-            CollectionName::GoogleUsers => "google_users",
-        }
-    }
+#[derive(Debug)]
+pub enum DbErr {
+    InvalidDbPath(String, String),
+    ClientCreateError(String, String),
+    QueryErr(String),
 }
 
-impl AccountService {
-    pub async fn get_collection<T: Serialize>(
+pub struct Db {
+    db_path: String,
+    db_name: String,
+}
+
+impl Db {
+    pub fn new(db_path: String, db_name: String) -> Db {
+        Db { db_path, db_name }
+    }
+
+    // Database struct connected
+    async fn get_db(&self) -> Result<Database, DbErr> {
+        let client_options = ClientOptions::parse(&self.db_path).await.map_err(|err| {
+            DbErr::InvalidDbPath(
+                format!("Could not parse db_path: {}", self.db_path),
+                err.to_string(),
+            )
+        })?;
+
+        let client = Client::with_options(client_options).map_err(|err| {
+            DbErr::ClientCreateError(
+                format!("could not create db client with path: {}", &self.db_path),
+                err.to_string(),
+            )
+        })?;
+
+        let db = client.database(&self.db_name);
+
+        Ok(db)
+    }
+
+    async fn get_collection<T: Serialize>(
         &self,
         collection_name: CollectionName,
-    ) -> Collection<T> {
-        self.db.collection::<T>(collection_name.into())
+    ) -> Result<Collection<T>, DbErr> {
+        let collection = self.get_db().await?.collection::<T>(collection_name.into());
+        Ok(collection)
     }
 
     // inserts if the record does not exist, does nothing otherwise
@@ -59,16 +97,18 @@ impl AccountService {
     >(
         &self,
         doc: D,
-    ) {
-        let collection = self.get_collection(doc.get_collection_name()).await;
+    ) -> Result<(), DbErr> {
+        let collection = self.get_collection(doc.get_collection_name()).await?;
 
         let existing = collection
             .find_one(doc.find_one_filter(), None)
             .await
-            .expect("Could not fetch from db");
+            .map_err(|err| DbErr::QueryErr(format!("Could not fetch from db: {}", err)))?;
 
-        if let None = existing {
+        if existing.is_none() {
             collection.insert_one(doc, None).await.unwrap();
         }
+
+        Ok(())
     }
 }

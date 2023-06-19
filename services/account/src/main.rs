@@ -1,4 +1,4 @@
-use mongodb::{options::ClientOptions, Client, Database};
+use db::Db;
 use rpc::account::{
     account_server::{Account, AccountServer},
     AuthRequest, AuthResponse, GoogleSignInRequest, GoogleSignInResponse,
@@ -10,12 +10,14 @@ mod db;
 mod google;
 
 pub struct AccountService {
-    pub db: Database,
+    pub db: Db,
 }
 
 impl AccountService {
-    fn new(db: Database) -> AccountService {
-        AccountService { db }
+    fn new(db_path: String, db_name: String) -> AccountService {
+        AccountService {
+            db: Db::new(db_path, db_name),
+        }
     }
 }
 
@@ -34,11 +36,17 @@ impl Account for AccountService {
         request: Request<GoogleSignInRequest>,
     ) -> Result<Response<GoogleSignInResponse>, Status> {
         match google::verify_token(request.into_inner().credential).await {
-            Some(google_user) => {
-                self.insert_if_new(google_user).await;
+            Ok(google_user) => {
+                if let Err(err) = self.db.insert_if_new(google_user).await {
+                    println!("{:?}", err);
+                    return Ok(Response::new(GoogleSignInResponse { success: false }));
+                }
                 Ok(Response::new(GoogleSignInResponse { success: true }))
             }
-            None => Ok(Response::new(GoogleSignInResponse { success: false })),
+            Err(err) => {
+                println!("{:?}", err);
+                Ok(Response::new(GoogleSignInResponse { success: false }))
+            }
         }
     }
 }
@@ -53,16 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db_path = "mongodb://root:root@db:27017";
 
-    let client_options = ClientOptions::parse(db_path)
-        .await
-        .expect(format!("could not parse db_path: {}", db_path).as_str());
-
-    let client = Client::with_options(client_options)
-        .expect(format!("could not create db client with path: {}", db_path).as_str());
-
-    let db = client.database("account");
-
-    let service = AccountService::new(db);
+    let service = AccountService::new(db_path.to_owned(), "account".to_owned());
 
     let addr = "0.0.0.0:80".parse()?;
 
