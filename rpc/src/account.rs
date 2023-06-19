@@ -7,8 +7,8 @@ pub struct GoogleSignInRequest {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GoogleSignInResponse {
-    #[prost(bool, tag = "1")]
-    pub success: bool,
+    #[prost(string, tag = "1")]
+    pub token: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

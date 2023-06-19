@@ -11,7 +11,7 @@ message GoogleSignInRequest {
 }
 
 message GoogleSignInResponse {
-    bool success = 1;
+    string token = 1;
 }
 
 message AuthRequest {

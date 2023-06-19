@@ -6,7 +6,7 @@ use openssl::{bn::BigNum, hash::MessageDigest, pkey::PKey, rsa::Rsa};
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
 
-use crate::db::GoogleUser;
+use crate::db::models::GoogleUser;
 
 const GOOGLE_DISCOVERY_DOC_URL: &str =
     "https://accounts.google.com/.well-known/openid-configuration";
