@@ -3,7 +3,11 @@ use rpc::account::{
 };
 use tonic::{Request, Response, Status};
 
-use crate::{db::Db, google};
+use crate::{
+    auth::{create_jwt, verify},
+    db::{models::User, Db},
+    google,
+};
 
 pub struct AccountService {
     pub db: Db,
@@ -13,10 +17,6 @@ impl AccountService {
     pub fn new(db: Db) -> AccountService {
         AccountService { db }
     }
-
-    pub fn gen_token(&self) -> String {
-        todo!()
-    }
 }
 
 #[tonic::async_trait]
@@ -25,8 +25,12 @@ impl Account for AccountService {
         &self,
         request: Request<AuthRequest>,
     ) -> Result<Response<AuthResponse>, Status> {
-        println!("{}", request.into_inner().token);
-        Ok(Response::new(AuthResponse { success: true }))
+        let token = request.into_inner().token;
+        let result = verify(token)
+            .map(|_claims| Response::new(AuthResponse { success: true }))
+            .unwrap_or_else(|_err| Response::new(AuthResponse { success: false }));
+
+        Ok(result)
     }
 
     async fn google_sign_in(
@@ -35,14 +39,23 @@ impl Account for AccountService {
     ) -> Result<Response<GoogleSignInResponse>, Status> {
         match google::verify_token(request.into_inner().credential).await {
             Ok(google_user) => {
-                if let Err(err) = self.db.insert_if_new(google_user).await {
+                let user = User {
+                    google_id: google_user.google_id,
+                    first_name: google_user.first_name,
+                    last_name: google_user.last_name,
+                    email: google_user.email,
+                };
+
+                if let Err(err) = self.db.insert_or_replace(user.clone()).await {
                     println!("{:?}", err);
                     let err = format!("{:?}", err);
                     return Err(Status::new(tonic::Code::Internal, err));
                 }
 
-                let token = self.gen_token();
-                Ok(Response::new(GoogleSignInResponse { token }))
+                let token = create_jwt(&user);
+                token
+                    .map(|t| Response::new(GoogleSignInResponse { token: t }))
+                    .map_err(|err| Status::new(tonic::Code::Internal, format!("{:?}", err)))
             }
             Err(err) => {
                 println!("{:?}", err);

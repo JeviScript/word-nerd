@@ -6,10 +6,17 @@ use openssl::{bn::BigNum, hash::MessageDigest, pkey::PKey, rsa::Rsa};
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
 
-use crate::db::models::GoogleUser;
-
 const GOOGLE_DISCOVERY_DOC_URL: &str =
     "https://accounts.google.com/.well-known/openid-configuration";
+
+#[derive(Debug)]
+pub struct GoogleUser {
+    // unique per google account
+    pub google_id: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
+}
 
 #[derive(Deserialize, Debug)]
 struct DiscoveryDocument {

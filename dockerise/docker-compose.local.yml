@@ -19,6 +19,7 @@ services:
       target: rust_base
     volumes: 
       - ../web-api:/code/web-api
+      - /code/web-api/target
       - ../rpc/:/code/rpc/
     working_dir: /code/web-api
     entrypoint: ["cargo", "watch", "-x", "'run'"]
@@ -30,9 +31,13 @@ services:
       target: rust_ms
     volumes: 
       - ../services/account:/code/services/account 
+      - /code/services/account/target
       - ../rpc/:/code/rpc/
     working_dir: /code/services/account
     entrypoint: ["cargo", "watch", "-x", "'run'"]
+    environment:
+      DB_CONNECTION_URI: mongodb://root:root@db:27017
+      JWT_SECRET: some-secret
 
   dictionary:
     build: 
@@ -41,6 +46,7 @@ services:
       target: rust_ms
     volumes: 
       - ../services/dictionary:/code/services/dictionary
+      - /code/services/dictionary/target
       - ../rpc/:/code/rpc/
     working_dir: /code/services/dictionary
     entrypoint: ["cargo", "watch", "-x", "'run'"]

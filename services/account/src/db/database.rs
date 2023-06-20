@@ -1,4 +1,4 @@
-use mongodb::options::ClientOptions;
+use mongodb::options::{ClientOptions, ReplaceOptions};
 use mongodb::{bson::Document, Collection};
 use mongodb::{Client, Database};
 use serde::{de::DeserializeOwned, Serialize};
@@ -11,7 +11,7 @@ pub trait FindOneFilter {
 
 #[derive(Debug)]
 pub enum DbErr {
-    QueryErr(String),
+    QueryErr(mongodb::error::Error),
 }
 
 pub struct Db {
@@ -19,15 +19,20 @@ pub struct Db {
 }
 
 impl Db {
-    pub async fn new(db_path: String, db_name: &str) -> Db {
-        let client_options = ClientOptions::parse(&db_path)
+    pub async fn new(db_connection_uri: String, db_name: &str) -> Db {
+        let client_options = ClientOptions::parse(&db_connection_uri)
             .await
-            .unwrap_or_else(|err| panic!("Could not parse db_path: {}. Err: {}", &db_path, err));
+            .unwrap_or_else(|err| {
+                panic!(
+                    "Could not parse db_connection_uri: {}. Err: {}",
+                    &db_connection_uri, err
+                )
+            });
 
         let client = Client::with_options(client_options).unwrap_or_else(|err| {
             panic!(
-                "Could not create client with db_path: {}, Err: {}",
-                &db_path, err
+                "Could not create client with db_connection_uri: {}, Err: {}",
+                &db_connection_uri, err
             )
         });
 
@@ -39,23 +44,22 @@ impl Db {
         self.db.collection::<T>(collection_name.into())
     }
 
-    // inserts if the record does not exist, does nothing otherwise
-    pub async fn insert_if_new<
-        D: Serialize + FindOneFilter + DbCollection + DeserializeOwned + Send + Sync + Unpin,
+    /// inserts if the record does not exist, replaces otherwise
+    pub async fn insert_or_replace<
+        Doc: Serialize + FindOneFilter + DbCollection + DeserializeOwned + Send + Sync + Unpin,
     >(
         &self,
-        doc: D,
+        doc: Doc,
     ) -> Result<(), DbErr> {
         let collection = self.get_collection(doc.get_collection_name()).await;
 
-        let existing = collection
-            .find_one(doc.find_one_filter(), None)
+        let mut replace_options = ReplaceOptions::default();
+        // inserts when finds None
+        replace_options.upsert = Some(true);
+        collection
+            .replace_one(doc.find_one_filter(), doc, replace_options)
             .await
-            .map_err(|err| DbErr::QueryErr(format!("Could not fetch from db: {}", err)))?;
-
-        if existing.is_none() {
-            collection.insert_one(doc, None).await.unwrap();
-        }
+            .map_err(DbErr::QueryErr)?;
 
         Ok(())
     }

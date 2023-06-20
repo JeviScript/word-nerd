@@ -30,7 +30,7 @@ async fn post_login(req: web::Json<Login>, rpc: web::Data<Rpc>) -> HttpResponse 
         .await
         .unwrap()
         .into_inner()
-        .success;
+        .token;
 
     web_response(HttpResponse::Ok(), res.to_string())
 }
