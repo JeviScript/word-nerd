@@ -1,16 +1,30 @@
+import { push, pop, replace } from 'svelte-spa-router'
+import { user, type User } from '../store/user';
+
 function getApiUrl(): string {
 	return import.meta.env.VITE_API_URL;
 }
 
-async function get() {
-	const res = await fetch(`${getApiUrl()}/`, {
-		method: "GET",
-		mode: 'cors',
-	});
-	return await res.json();
+function getAuthToken(): string {
+	return localStorage.getItem("authToken");
 }
 
-async function post<T>(url: string, data: T) {
+async function get<Response>(url: string) {
+	const res = await fetch(`${getApiUrl()}/${url}`, {
+		method: "GET",
+		mode: 'cors',
+		headers: {
+			"Authorization": `Bearer ${getAuthToken()}`
+		}
+	}).then((res) => {
+		checkErrors(res);
+		return res;
+	});
+
+	return await res.json() as Response;
+}
+
+async function post<T, Response>(url: string, data: T) {
 	const res = await fetch(`${getApiUrl()}/${url}`, {
 		method: "POST",
 		mode: 'cors',
@@ -19,11 +33,36 @@ async function post<T>(url: string, data: T) {
 		headers: {
 			"Content-Type": "application/json",
 		},
+	}).then(res => {
+		checkErrors(res);
+		return res;
 	});
-	return await res.json();
+	return await res.json() as Response;
+}
+
+function checkErrors(res: Response) {
+	if (res.status === 401) {
+			push("/login");
+			throw res;
+	}
 }
 
 
 export function googleSignIn(credential: string) {
-	post('auth/login', { credential });
+	post<{ credential: string }, GoogleSignInRes>('auth/login', { credential }).then((res) => {
+		localStorage.setItem('authToken', res.token)
+		push("/home")
+	});
 }
+
+export async function me(): Promise<User> {
+	return get<User>('me').then(val => {
+		user.set(val);
+		return val;
+	});
+}
+
+interface GoogleSignInRes {
+	token: string
+}
+

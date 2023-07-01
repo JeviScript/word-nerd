@@ -68,6 +68,7 @@ async fn get_discovery_document() -> Result<DiscoveryDocument, HttpError> {
     get(GOOGLE_DISCOVERY_DOC_URL).await
 }
 
+// TODO capture interal errors instead of Strings
 #[derive(Debug)]
 pub enum VerifyTokenErr {
     GetDiscoveryDocumentErr(String),

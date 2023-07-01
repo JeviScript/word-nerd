@@ -3,6 +3,13 @@ use serde::{Deserialize, Serialize};
 
 use super::database::FindOneFilter;
 
+// TODO explore type safety for field names when doing filtering
+/*  e.g.
+    let filter = User::filter();
+    filter.name = "Hoid";
+    User::update(filter);
+*/
+
 pub enum CollectionName {
     Users,
 }
@@ -19,7 +26,7 @@ pub trait DbCollection {
     fn get_collection_name(&self) -> CollectionName;
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct User {
     pub google_id: String,
     pub first_name: String,

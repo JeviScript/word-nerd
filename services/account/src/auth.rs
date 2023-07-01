@@ -51,7 +51,7 @@ impl Auth for User {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     // Subject (whom token refers to)
-    sub: String,
+    pub sub: String,
     // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    exp: usize,
+    pub exp: usize,
 }

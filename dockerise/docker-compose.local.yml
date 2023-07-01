@@ -9,6 +9,7 @@ services:
       target: node_base
     volumes: 
       - ../web-client:/code/web-client
+      - /code/web-client/node_modules
     working_dir: /code/web-client
     entrypoint: ["npm", "run", "dev"]
     environment:

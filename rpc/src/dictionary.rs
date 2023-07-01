@@ -97,7 +97,6 @@ pub mod dictionary_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        /// Our SayHello rpc accepts HelloRequests and returns HelloReplies
         pub async fn say_hello(
             &mut self,
             request: impl tonic::IntoRequest<super::HelloRequest>,
@@ -129,7 +128,6 @@ pub mod dictionary_server {
     /// Generated trait containing gRPC methods that should be implemented for use with DictionaryServer.
     #[async_trait]
     pub trait Dictionary: Send + Sync + 'static {
-        /// Our SayHello rpc accepts HelloRequests and returns HelloReplies
         async fn say_hello(
             &self,
             request: tonic::Request<super::HelloRequest>,

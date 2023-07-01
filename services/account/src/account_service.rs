@@ -1,11 +1,16 @@
+use mongodb::bson::doc;
 use rpc::account::{
     account_server::Account, AuthRequest, AuthResponse, GoogleSignInRequest, GoogleSignInResponse,
+    MeRequest, MeResponse,
 };
 use tonic::{Request, Response, Status};
 
 use crate::{
     auth::{create_jwt, verify},
-    db::{models::User, Db},
+    db::{
+        models::{CollectionName, User},
+        Db, DbErr,
+    },
     google,
 };
 
@@ -63,5 +68,27 @@ impl Account for AccountService {
                 return Err(Status::new(tonic::Code::Internal, err));
             }
         }
+    }
+
+    async fn me(&self, request: Request<MeRequest>) -> Result<Response<MeResponse>, Status> {
+        let token = request.into_inner().token;
+        let claims = verify(token).map_err(|e| Status::unauthenticated(format!("{:?}", e)))?;
+
+        let user = self
+            .db
+            .get_collection::<User>(CollectionName::Users)
+            .await
+            // google_id is a magic string here
+            // TODO provide type safety for field names
+            .find_one(doc! {"google_id": claims.sub}, None)
+            .await
+            .map_err(|_| Status::internal(""))?
+            .ok_or(Status::not_found(""))?;
+
+        let response = Response::new(MeResponse {
+            name: user.first_name,
+        });
+
+        Ok(response)
     }
 }

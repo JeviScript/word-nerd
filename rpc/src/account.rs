@@ -22,6 +22,18 @@ pub struct AuthResponse {
     #[prost(bool, tag = "1")]
     pub success: bool,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MeRequest {
+    #[prost(string, tag = "1")]
+    pub token: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MeResponse {
+    #[prost(string, tag = "1")]
+    pub name: ::prost::alloc::string::String,
+}
 /// Generated client implementations.
 pub mod account_client {
     #![allow(unused_variables, dead_code, missing_docs, clippy::let_unit_value)]
@@ -129,6 +141,25 @@ pub mod account_client {
                 .insert(GrpcMethod::new("account.Account", "Authenticate"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn me(
+            &mut self,
+            request: impl tonic::IntoRequest<super::MeRequest>,
+        ) -> std::result::Result<tonic::Response<super::MeResponse>, tonic::Status> {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static("/account.Account/Me");
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new("account.Account", "Me"));
+            self.inner.unary(req, path, codec).await
+        }
         pub async fn google_sign_in(
             &mut self,
             request: impl tonic::IntoRequest<super::GoogleSignInRequest>,
@@ -167,6 +198,10 @@ pub mod account_server {
             &self,
             request: tonic::Request<super::AuthRequest>,
         ) -> std::result::Result<tonic::Response<super::AuthResponse>, tonic::Status>;
+        async fn me(
+            &self,
+            request: tonic::Request<super::MeRequest>,
+        ) -> std::result::Result<tonic::Response<super::MeResponse>, tonic::Status>;
         async fn google_sign_in(
             &self,
             request: tonic::Request<super::GoogleSignInRequest>,
@@ -283,6 +318,48 @@ pub mod account_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = AuthenticateSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/account.Account/Me" => {
+                    #[allow(non_camel_case_types)]
+                    struct MeSvc<T: Account>(pub Arc<T>);
+                    impl<T: Account> tonic::server::UnaryService<super::MeRequest>
+                    for MeSvc<T> {
+                        type Response = super::MeResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::MeRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move { (*inner).me(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = MeSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

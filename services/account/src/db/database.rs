@@ -40,7 +40,10 @@ impl Db {
         Db { db }
     }
 
-    async fn get_collection<T: Serialize>(&self, collection_name: CollectionName) -> Collection<T> {
+    pub async fn get_collection<T: Serialize>(
+        &self,
+        collection_name: CollectionName,
+    ) -> Collection<T> {
         self.db.collection::<T>(collection_name.into())
     }
 
