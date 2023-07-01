@@ -11,6 +11,8 @@ services:
       - ../web-client:/code/web-client
     working_dir: /code/web-client
     entrypoint: ["npm", "run", "dev"]
+    environment:
+      VITE_API_URL: http://localhost:8081
 
   web-api:
     build: 
@@ -23,6 +25,9 @@ services:
       - ../rpc/:/code/rpc/
     working_dir: /code/web-api
     entrypoint: ["cargo", "watch", "-x", "'run'"]
+    environment:
+      ACCOUNT_SERVICE_URI: http://account
+      DICTIONARY_SERVICE_URI: http://dictionary
 
   account:
     build: 

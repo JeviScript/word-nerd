@@ -3,7 +3,7 @@ function getApiUrl(): string {
 }
 
 async function get() {
-	const res = await fetch(`${getApiUrl()}/auth/account/Eldakar`, {
+	const res = await fetch(`${getApiUrl()}/`, {
 		method: "GET",
 		mode: 'cors',
 	});
@@ -26,5 +26,4 @@ async function post<T>(url: string, data: T) {
 
 export function googleSignIn(credential: string) {
 	post('auth/login', { credential });
-	get();
 }

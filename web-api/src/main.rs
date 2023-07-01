@@ -1,61 +1,117 @@
-use actix_cors::Cors;
-use actix_web::{http::header, middleware::Logger, web, App, HttpServer};
-use dotenv::dotenv;
-use env_logger::Env;
+use axum::http::StatusCode;
+use routes::api_routes;
 use rpc::{
     account::account_client::AccountClient, dictionary::dictionary_client::DictionaryClient,
 };
+use std::env;
+use std::sync::OnceLock;
 use tonic::transport::Channel;
+use tower_http::cors::CorsLayer;
 
-mod endpoints;
+mod middleware;
+mod routes;
+mod utils;
+
+// global vars
+static ENV: OnceLock<Env> = OnceLock::new();
+static RPC: OnceLock<Rpc> = OnceLock::new();
 
 #[derive(Clone)]
-struct Rpc {
+pub struct Rpc {
     account_service_url: String,
     dictionary_service_url: String,
+
+    // attempt to reuse clients if possible
+    account_client: Option<AccountClient<Channel>>,
+    dict_client: Option<DictionaryClient<Channel>>,
 }
 
 impl Rpc {
-    async fn get_account_connection(&self) -> AccountClient<Channel> {
-        let url = &self.account_service_url;
-        AccountClient::connect(url.clone())
-            .await
-            .expect(format!("failed connect to {}", url).as_str())
+    pub fn init(account_url: String, dict_url: String) -> Rpc {
+        let rpc = Rpc {
+            account_service_url: account_url,
+            dictionary_service_url: dict_url,
+            account_client: None,
+            dict_client: None,
+        };
+
+        _ = RPC.set(rpc.clone());
+        rpc
     }
 
-    async fn get_dictionary_connection(&self) -> DictionaryClient<Channel> {
-        let url = &self.dictionary_service_url;
+    fn get() -> &'static Rpc {
+        RPC.get()
+            .unwrap_or_else(|| panic!("Had to be initialized before used!"))
+    }
+
+    async fn get_account_client() -> Result<AccountClient<Channel>, StatusCode> {
+        if let Some(ref client) = Self::get().account_client {
+            return Ok(client.clone());
+        }
+
+        let url = &Self::get().account_service_url;
+        AccountClient::connect(url.clone())
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    }
+
+    async fn get_dictionary_client() -> Result<DictionaryClient<Channel>, StatusCode> {
+        if let Some(ref client) = Self::get().dict_client {
+            return Ok(client.clone());
+        }
+        let url = &Self::get().dictionary_service_url;
         DictionaryClient::connect(url.clone())
             .await
-            .expect(format!("failed connect to {}", url).as_str())
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
-    dotenv().ok();
+#[tokio::main]
+async fn main() {
+    // TODO tracing
 
-    let rpc = Rpc {
-        account_service_url: format!("http://account"),
-        dictionary_service_url: format!("http://dictionary"),
-    };
+    Rpc::init(
+        Env::vars().account_service_uri,
+        Env::vars().dict_service_uri,
+    );
 
-    HttpServer::new(move || {
-        let cors = Cors::default()
-            .allowed_origin("http://localhost:4200")
-            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-            .allowed_headers(vec![header::CONTENT_TYPE])
-            .supports_credentials()
-            .max_age(3600);
+    let app = api_routes().layer(CorsLayer::very_permissive());
 
-        App::new()
-            .wrap(cors)
-            .wrap(Logger::default())
-            .app_data(web::Data::new(rpc.clone()))
-            .service(web::scope("").configure(endpoints::config))
-    })
-    .bind(("0.0.0.0", 80))?
-    .run()
-    .await
+    let addr = &"0.0.0.0:80".parse().unwrap();
+
+    axum::Server::bind(addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
+
+#[derive(Debug, Clone)]
+struct Env {
+    pub account_service_uri: String,
+    pub dict_service_uri: String,
+}
+
+// TODO reuse logic for setting env variables with services somehow
+impl Env {
+    // Can panic !
+    fn init() -> Self {
+        let env = Env {
+            account_service_uri: Env::required("ACCOUNT_SERVICE_URI"),
+            dict_service_uri: Env::required("DICTIONARY_SERVICE_URI"),
+        };
+
+        _ = ENV.set(env.clone());
+        env
+    }
+
+    fn required(env_var: &str) -> String {
+        env::var(env_var).unwrap_or_else(|_| panic!("Missing required env variable: {}", env_var))
+    }
+
+    fn vars() -> Self {
+        match ENV.get() {
+            Some(val) => val.clone(),
+            None => Self::init(),
+        }
+    }
 }

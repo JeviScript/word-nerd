@@ -9,7 +9,7 @@
     │   ├── account             # Rust microservise. Handles login/authentication. Database: mongodb
     │   ├── dictionary          # Rust microservice. Scans 3rd party dictionary sources. Database: mongodb
     ├── web-client              # Front-end written in svelte.
-    ├── web-api                 # Api gateway for the front-end written in rust and actix.
+    ├── web-api                 # Api gateway for the front-end written in rust and axum.
     └── README.md
 
 ## Local dev
