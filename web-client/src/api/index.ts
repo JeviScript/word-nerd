@@ -41,7 +41,7 @@ async function post<T, Response>(url: string, data: T) {
 }
 
 function checkErrors(res: Response) {
-	if (res.status === 401) {
+	if (res.status >= 400 && res.status <= 499) {
 			push("/login");
 			throw res;
 	}
@@ -51,7 +51,7 @@ function checkErrors(res: Response) {
 export function googleSignIn(credential: string) {
 	post<{ credential: string }, GoogleSignInRes>('auth/login', { credential }).then((res) => {
 		localStorage.setItem('authToken', res.token)
-		push("/home")
+		push("/")
 	});
 }
 

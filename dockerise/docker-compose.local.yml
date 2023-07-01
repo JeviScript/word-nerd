@@ -12,8 +12,7 @@ services:
       - /code/web-client/node_modules
     working_dir: /code/web-client
     entrypoint: ["npm", "run", "dev"]
-    environment:
-      VITE_API_URL: http://localhost:8081
+    env_file: ../.env
 
   web-api:
     build: 
