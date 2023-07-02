@@ -25,9 +25,11 @@ fn protected_routes() -> Router {
         .route_layer(middleware::from_fn(auth_guard))
 }
 
-#[derive(Serialize)]
-struct GetLongRes {
-    name: String,
+#[derive(Serialize, Debug)]
+struct GetMeRes {
+    first_name: String,
+    last_name: String,
+    email: String,
 }
 
 async fn get_me(TypedHeader(auth): TypedHeader<Authorization<Bearer>>) -> impl IntoResponse {
@@ -38,12 +40,17 @@ async fn get_me(TypedHeader(auth): TypedHeader<Authorization<Bearer>>) -> impl I
     let mut client = Rpc::get_account_client().await?;
 
     match client.me(request).await {
-        Ok(res) => Ok((
-            StatusCode::OK,
-            Json(GetLongRes {
-                name: res.into_inner().name,
-            }),
-        )),
+        Ok(res) => {
+            let res = res.into_inner();
+            Ok((
+                StatusCode::OK,
+                Json(GetMeRes {
+                    first_name: res.first_name,
+                    last_name: res.last_name,
+                    email: res.email,
+                }),
+            ))
+        }
         Err(_status) => Err(StatusCode::UNAUTHORIZED),
     }
 }

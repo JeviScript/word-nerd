@@ -32,7 +32,11 @@ pub struct MeRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MeResponse {
     #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
+    pub first_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub last_name: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub email: ::prost::alloc::string::String,
 }
 /// Generated client implementations.
 pub mod account_client {

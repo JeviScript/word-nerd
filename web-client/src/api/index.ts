@@ -47,7 +47,6 @@ function checkErrors(res: Response) {
 	}
 }
 
-
 export function googleSignIn(credential: string) {
 	post<{ credential: string }, GoogleSignInRes>('auth/login', { credential }).then((res) => {
 		localStorage.setItem('authToken', res.token)
@@ -57,10 +56,16 @@ export function googleSignIn(credential: string) {
 
 export async function me(): Promise<User> {
 	return get<User>('me').then(val => {
+		console.log(val)
 		user.set(val);
 		return val;
 	});
 }
+
+export async function get_word(word: string) {
+	return get(`dict?word=${word}`)
+}
+
 
 interface GoogleSignInRes {
 	token: string

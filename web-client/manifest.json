@@ -1,0 +1,15 @@
+{
+  "name": "Word-nerd",
+  "short_name": "word-nerd",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#212121",
+  "description": "Totally overengineered vocabulary builde",
+  "icons": [
+    {
+      "src": "public/vite.svg",
+      "sizes": "48x48",
+      "type": "image/svg"
+    }
+  ]
+}

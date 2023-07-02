@@ -3,6 +3,4 @@
 
 </script>
 
-login page
-
 <GoogleBtn />

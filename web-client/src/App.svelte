@@ -3,8 +3,8 @@
   import Login from "./routes/Login.svelte";
   import NotFound from "./routes/NotFound.svelte";
   import { wrap } from "svelte-spa-router/wrap";
-  import Router, { type RouteDetail } from "svelte-spa-router";
-  import type { SvelteComponent } from "svelte";
+  import Router, { push, type RouteDetail } from "svelte-spa-router";
+  import { onMount, type SvelteComponent } from "svelte";
 
   const home = () => {
     return import("./routes/Home.svelte") as Promise<{
@@ -13,11 +13,10 @@
   };
 
   const auth = async (_detail: RouteDetail) => {
-    const gg = await me()
+    const user = await me()
       .then((_res) => true)
       .catch((_) => false);
-    console.log(gg)
-    return gg;
+    return user;
   };
 
   const routes = {
@@ -28,11 +27,22 @@
     }),
     "*": NotFound,
   };
+
+  onMount(async () => {
+    const user = await me();
+    if (user) {
+      push("/")
+    } 
+  })
 </script>
+
 
 <main>
   <Router {routes} />
 </main>
 
 <style>
+  main {
+    padding: 24px;
+  }
 </style>

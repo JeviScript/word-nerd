@@ -9,7 +9,7 @@ use crate::{
     auth::{create_jwt, verify},
     db::{
         models::{CollectionName, User},
-        Db, DbErr,
+        Db,
     },
     google,
 };
@@ -86,7 +86,9 @@ impl Account for AccountService {
             .ok_or(Status::not_found(""))?;
 
         let response = Response::new(MeResponse {
-            name: user.first_name,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
         });
 
         Ok(response)

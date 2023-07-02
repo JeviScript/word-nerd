@@ -153,7 +153,7 @@ pub async fn verify_token(token: String) -> Result<GoogleUser, VerifyTokenErr> {
     let claims = verify_result.claims();
     let google_id = claims.get("sub").ok_or(VerifyTokenErr::NoGoogleId)?;
     let google_user = GoogleUser {
-        google_id: google_id.clone().to_string(),
+        google_id: google_id.clone().to_string().remove_quotes(),
         first_name: or_default(claims.get("given_name")),
         last_name: or_default(claims.get("family_name")),
         email: or_default(claims.get("email")),
@@ -163,5 +163,16 @@ pub async fn verify_token(token: String) -> Result<GoogleUser, VerifyTokenErr> {
 }
 
 fn or_default(option: Option<&Value>) -> String {
-    option.unwrap_or(&"".into()).to_string()
+    option.unwrap_or(&"".into()).to_string().remove_quotes()
+}
+
+// For some reason JWT lib returns Strings with additional surrounded quotes
+trait RemoveQuotes {
+    fn remove_quotes(&self) -> String;
+}
+
+impl RemoveQuotes for String {
+    fn remove_quotes(&self) -> String {
+        self.replace('"', "")
+    }
 }
