@@ -55,4 +55,7 @@ services:
       - ../rpc/:/code/rpc/
     working_dir: /code/services/dictionary
     entrypoint: ["cargo", "watch", "-x", "'run'"]
+    environment:
+      DB_CONNECTION_URI: mongodb://root:root@db:27017
+      VOCABULARY_URL: https://www.vocabulary.com/dictionary
 

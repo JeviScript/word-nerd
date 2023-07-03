@@ -1,25 +1,59 @@
+use crate::env::Env;
+use db::{models::Definition, Db};
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
-    HelloReply, HelloRequest,
+    GetWordDefinitionsReply, GetWordDefinitionsRequest,
 };
+use std::sync::OnceLock;
 use tonic::{transport::Server, Request, Response, Status};
 
-#[derive(Debug, Default)]
-pub struct DictionaryService {}
+mod cloudflare_bypasser;
+mod db;
+mod env;
+mod vocabulary;
+
+// global vars
+static ENV: OnceLock<Env> = OnceLock::new();
+
+#[derive(Debug)]
+pub struct DictionaryService {
+    pub db: Db,
+}
+
+impl DictionaryService {
+    pub fn new(db: Db) -> DictionaryService {
+        DictionaryService { db }
+    }
+}
 
 #[tonic::async_trait]
 impl Dictionary for DictionaryService {
-    async fn say_hello(
+    async fn get_word_definitions(
         &self,
-        request: Request<HelloRequest>,
-    ) -> Result<Response<HelloReply>, Status> {
-        println!("Got a request: {:?}", request);
+        request: Request<GetWordDefinitionsRequest>,
+    ) -> Result<Response<GetWordDefinitionsReply>, Status> {
+        let word = request.into_inner().word;
+        // TODO CQRS ??
+        let voc = vocabulary::scrape(word.as_str())
+            .await
+            .map_err(|e| {
+                println!("{:?}", e);
+                e
+            })
+            .unwrap_or_default();
 
-        let reply = HelloReply {
-            message: format!("Hello {}! from dictionary-ms", request.into_inner().name).into(),
+        let definition = Definition {
+            word: word.to_string(),
+            vocabulary: voc,
+            ..Default::default()
         };
 
-        Ok(Response::new(reply))
+        self.db
+            .insert_or_replace(definition)
+            .await
+            .map_err(|e| Status::internal(format!("{:?}", e)))?;
+
+        Ok(Response::new(GetWordDefinitionsReply { success: true }))
     }
 }
 
@@ -31,9 +65,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_serving::<DictionaryServer<DictionaryService>>()
         .await;
 
-    let addr = "0.0.0.0:80".parse()?;
-    let service = DictionaryService::default();
+    Env::init();
 
+    let db = Db::new(Env::vars().db_connection_uri, "dictionary").await;
+
+    let service = DictionaryService::new(db);
+
+    let addr = "0.0.0.0:80".parse()?;
     Server::builder()
         .add_service(health_service)
         .add_service(DictionaryServer::new(service))

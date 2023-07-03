@@ -15,10 +15,11 @@ struct WordQuery {
 async fn get_word(query: Query<WordQuery>) -> impl IntoResponse {
     let mut client = Rpc::get_dictionary_client().await?;
 
-    let request = tonic::Request::new(rpc::dictionary::HelloRequest { name: query.0.word });
+    let request =
+        tonic::Request::new(rpc::dictionary::GetWordDefinitionsRequest { word: query.0.word });
 
-    match client.say_hello(request).await {
-        Ok(res) => Ok((StatusCode::OK, res.into_inner().message)),
+    match client.get_word_definitions(request).await {
+        Ok(res) => Ok((StatusCode::OK, res.into_inner().success.to_string())),
         Err(_status) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }

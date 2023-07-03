@@ -42,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+// TODO reuse
 #[derive(Debug)]
 struct Env {
     pub db_connection_uri: String,

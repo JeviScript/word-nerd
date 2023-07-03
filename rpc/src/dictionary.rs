@@ -1,16 +1,15 @@
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloRequest {
-    /// Request message contains the name to be greeted
+pub struct GetWordDefinitionsRequest {
     #[prost(string, tag = "1")]
-    pub name: ::prost::alloc::string::String,
+    pub word: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct HelloReply {
-    /// Reply contains the greeting message
-    #[prost(string, tag = "1")]
-    pub message: ::prost::alloc::string::String,
+pub struct GetWordDefinitionsReply {
+    /// TODO
+    #[prost(bool, tag = "1")]
+    pub success: bool,
 }
 /// Generated client implementations.
 pub mod dictionary_client {
@@ -97,10 +96,13 @@ pub mod dictionary_client {
             self.inner = self.inner.max_encoding_message_size(limit);
             self
         }
-        pub async fn say_hello(
+        pub async fn get_word_definitions(
             &mut self,
-            request: impl tonic::IntoRequest<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloReply>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::GetWordDefinitionsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetWordDefinitionsReply>,
+            tonic::Status,
+        > {
             self.inner
                 .ready()
                 .await
@@ -112,11 +114,11 @@ pub mod dictionary_client {
                 })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/dictionary.Dictionary/SayHello",
+                "/dictionary.Dictionary/GetWordDefinitions",
             );
             let mut req = request.into_request();
             req.extensions_mut()
-                .insert(GrpcMethod::new("dictionary.Dictionary", "SayHello"));
+                .insert(GrpcMethod::new("dictionary.Dictionary", "GetWordDefinitions"));
             self.inner.unary(req, path, codec).await
         }
     }
@@ -128,10 +130,13 @@ pub mod dictionary_server {
     /// Generated trait containing gRPC methods that should be implemented for use with DictionaryServer.
     #[async_trait]
     pub trait Dictionary: Send + Sync + 'static {
-        async fn say_hello(
+        async fn get_word_definitions(
             &self,
-            request: tonic::Request<super::HelloRequest>,
-        ) -> std::result::Result<tonic::Response<super::HelloReply>, tonic::Status>;
+            request: tonic::Request<super::GetWordDefinitionsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetWordDefinitionsReply>,
+            tonic::Status,
+        >;
     }
     #[derive(Debug)]
     pub struct DictionaryServer<T: Dictionary> {
@@ -212,22 +217,26 @@ pub mod dictionary_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/dictionary.Dictionary/SayHello" => {
+                "/dictionary.Dictionary/GetWordDefinitions" => {
                     #[allow(non_camel_case_types)]
-                    struct SayHelloSvc<T: Dictionary>(pub Arc<T>);
-                    impl<T: Dictionary> tonic::server::UnaryService<super::HelloRequest>
-                    for SayHelloSvc<T> {
-                        type Response = super::HelloReply;
+                    struct GetWordDefinitionsSvc<T: Dictionary>(pub Arc<T>);
+                    impl<
+                        T: Dictionary,
+                    > tonic::server::UnaryService<super::GetWordDefinitionsRequest>
+                    for GetWordDefinitionsSvc<T> {
+                        type Response = super::GetWordDefinitionsReply;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
                         >;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::HelloRequest>,
+                            request: tonic::Request<super::GetWordDefinitionsRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
-                            let fut = async move { (*inner).say_hello(request).await };
+                            let fut = async move {
+                                (*inner).get_word_definitions(request).await
+                            };
                             Box::pin(fut)
                         }
                     }
@@ -238,7 +247,7 @@ pub mod dictionary_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let inner = inner.0;
-                        let method = SayHelloSvc(inner);
+                        let method = GetWordDefinitionsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(
