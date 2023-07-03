@@ -8,6 +8,7 @@ pub enum BypassErr {
 
 pub struct Bypasser {
     max_tries: u8,
+    wait_time: Duration,
 }
 
 impl Bypasser {
@@ -32,7 +33,7 @@ impl Bypasser {
                 .is_some();
 
             if challenged {
-                tokio::time::sleep(Duration::from_secs(5)).await;
+                tokio::time::sleep(self.wait_time).await;
                 continue;
             } else {
                 break Ok(res);
@@ -41,21 +42,9 @@ impl Bypasser {
     }
 
     async fn try_get(&self, url: &str) -> Result<String, reqwest::Error> {
-        let user_agent = fake_useragent::UserAgentsBuilder::new()
-            .cache(false)
-            .set_browsers(
-                fake_useragent::Browsers::new()
-                    .set_chrome()
-                    .set_firefox()
-                    .set_safari(),
-            )
-            .build()
-            .random()
-            .to_string();
-
         let res = reqwest::Client::new()
             .get(url)
-            .header(reqwest::header::USER_AGENT, user_agent)
+            .header(reqwest::header::USER_AGENT, fake_user_agent::get_rua())
             .send()
             .await?
             .text()
@@ -67,6 +56,9 @@ impl Bypasser {
 
 impl Default for Bypasser {
     fn default() -> Self {
-        Bypasser { max_tries: 5 }
+        Bypasser {
+            max_tries: 5,
+            wait_time: Duration::from_secs(1),
+        }
     }
 }

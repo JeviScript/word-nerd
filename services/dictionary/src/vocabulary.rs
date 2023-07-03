@@ -1,6 +1,3 @@
-use std::time::Duration;
-
-use reqwest::{header::HeaderValue, Response};
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 
@@ -59,7 +56,6 @@ pub fn get_word_url(word: &str) -> String {
 pub fn get_word_examples_url(word: &str, max_results: u8) -> String {
     let url =
         format!("{EXAMPLES_BASE_URL}?maxResults={max_results}&query={word}&sartOffset=0&domain=F");
-    println!("{}", url);
     url
 }
 
@@ -67,7 +63,33 @@ pub fn get_word_examples_url(word: &str, max_results: u8) -> String {
 pub enum ScrapeErr {
     BypassErr(cloudflare_bypasser::BypassErr),
     GetRequestErr(reqwest::Error),
-    CssSelectorErr(scraper::error::SelectorErrorKind<'static>),
+}
+
+enum ElementSelector {
+    Header,
+    OtherForms,
+    ShortDescription,
+    LongDescription,
+    Definitions,
+    Definition,
+    Example,
+}
+
+impl From<ElementSelector> for Selector {
+    fn from(value: ElementSelector) -> Self {
+        let css_selector = match value {
+            ElementSelector::Header => "[id=hdr-word-area]",
+            ElementSelector::OtherForms => ".word-forms > b:nth-child(1)",
+            ElementSelector::ShortDescription => ".short",
+            ElementSelector::LongDescription => ".long",
+            ElementSelector::Definitions => ".word-definitions > ol > li",
+            ElementSelector::Definition => ".definition",
+            ElementSelector::Example => ".example",
+        };
+
+        Selector::parse(css_selector)
+            .unwrap_or_else(|_| panic!("Could not parse the css_selector: {css_selector}"))
+    }
 }
 
 pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
@@ -81,19 +103,15 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
 
     let html_doc = Html::parse_document(html.as_str());
 
-    let selector = Selector::parse("[id=hdr-word-area]").map_err(ScrapeErr::CssSelectorErr)?;
     let header = html_doc
-        .select(&selector)
+        .select(&ElementSelector::Header.into())
         .next()
         .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
         .trim()
         .to_string();
 
-    let selector =
-        Selector::parse(".word-forms > b:nth-child(1)").map_err(ScrapeErr::CssSelectorErr)?;
-
     let other_forms: Vec<String> = html_doc
-        .select(&selector)
+        .select(&ElementSelector::OtherForms.into())
         .next()
         .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
         .trim()
@@ -101,26 +119,22 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
         .map(|x| x.trim().to_string())
         .collect();
 
-    let selector = Selector::parse(".short").map_err(ScrapeErr::CssSelectorErr)?;
-
     let short_description = html_doc
-        .select(&selector)
+        .select(&ElementSelector::ShortDescription.into())
         .next()
         .map_or_else(
             || "".to_string(),
-            |el| el.text().collect::<Vec<_>>().join("").to_string(),
+            |el| el.text().collect::<Vec<_>>().join(""),
         )
         .trim()
         .to_string();
 
-    let selector = Selector::parse(".long").map_err(ScrapeErr::CssSelectorErr)?;
-
     let long_description = html_doc
-        .select(&selector)
+        .select(&ElementSelector::LongDescription.into())
         .next()
         .map_or_else(
             || "".to_string(),
-            |el| el.text().collect::<Vec<_>>().join("").to_string(),
+            |el| el.text().collect::<Vec<_>>().join(""),
         )
         .trim()
         .to_string();
@@ -141,22 +155,17 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
 }
 
 fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
-    let selector =
-        Selector::parse(".word-definitions > ol > li").map_err(ScrapeErr::CssSelectorErr)?;
-
     let definitions = html
-        .select(&selector)
+        .select(&ElementSelector::Definitions.into())
         .map(|el| {
-            let selector = Selector::parse(".definition").map_err(ScrapeErr::CssSelectorErr)?;
+            let definition = el
+                .select(&ElementSelector::Definition.into())
+                .next()
+                .map_or_else(Vec::new, |el| {
+                    el.text().map(|x| x.trim().to_string()).collect::<Vec<_>>()
+                });
 
-            let definitionInners = el.select(&selector).next().map_or_else(
-                || Vec::new(),
-                |el| el.text().map(|x| x.trim().to_string()).collect::<Vec<_>>(),
-            );
-
-            println!("{:?}", definitionInners);
-
-            let variant = definitionInners.get(1).unwrap_or(&"".to_string()).clone();
+            let variant = definition.get(1).unwrap_or(&"".to_string()).clone();
 
             let variant = match variant.as_str().trim() {
                 "verb" => WordVariant::Verb,
@@ -166,15 +175,16 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                 v => WordVariant::Other(v.to_string()),
             };
 
-            let description = definitionInners.get(2).unwrap_or(&"".to_string()).clone();
-            let selector = Selector::parse(".example").map_err(ScrapeErr::CssSelectorErr)?;
-            let select = el.select(&selector);
+            let description = definition.get(2).unwrap_or(&"".to_string()).clone();
 
-            let short_examples: Vec<String> = select
+            let short_examples: Vec<String> = el
+                .select(&ElementSelector::Example.into())
                 .map(|el| {
                     el.text()
                         .filter_map(|x| {
-                            let trimmed = x.trim();
+                            // believe it or not but those two single “ quotes are not the same
+                            let without_quoutes = x.replace('“', "").replace('”', "");
+                            let trimmed = without_quoutes.trim().to_string();
                             match trimmed.is_empty() {
                                 true => None,
                                 false => Some(trimmed),
@@ -230,8 +240,6 @@ async fn scrape_examples(word: &str) -> Result<Vec<Example>, ScrapeErr> {
         .json::<GetExampleRes>()
         .await
         .map_err(ScrapeErr::GetRequestErr)?;
-
-    println!("{:?}", res);
 
     let examples: Vec<Example> = res
         .result

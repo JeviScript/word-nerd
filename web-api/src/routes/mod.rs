@@ -15,6 +15,7 @@ mod dict;
 pub fn api_routes() -> Router {
     Router::new()
         .nest("/", protected_routes())
+        .route("/health", get(|| async move { StatusCode::OK }))
         .nest("/auth", auth::routes())
 }
 
