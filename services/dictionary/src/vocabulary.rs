@@ -1,6 +1,5 @@
 use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
-
 use crate::cloudflare_bypasser;
 
 static DEFINITION_BASE_URL: &str = "https://www.vocabulary.com/dictionary";
@@ -9,13 +8,33 @@ static EXAMPLES_BASE_URL: &str = "https://corpus.vocabulary.com/api/1.0/examples
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Word {
     pub header: String,
+    pub pronunciations: Vec<Pronunciation>,
     pub other_forms: Vec<String>,
     pub short_description: String,
     pub long_description: String,
     pub definitions: Vec<Definition>,
     pub examples: Vec<Example>,
-    pub html: String,
-    // TODO synonyms
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct Pronunciation {
+    pub variant: PronunciationVariant,
+    pub audio: Audio,
+    pub ipa_str: String, // https://www.vocabulary.com/resources/ipa-pronunciation/
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct Audio {
+    pub format: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub enum PronunciationVariant {
+    #[default]
+    UK,
+    USA,
+    Other,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -34,6 +53,7 @@ pub struct Definition {
     pub description: String,
     pub image: Option<Image>,
     pub short_examples: Vec<String>,
+    pub synonyms: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -67,24 +87,28 @@ pub enum ScrapeErr {
 
 enum ElementSelector {
     Header,
+    IpaSection,
     OtherForms,
     ShortDescription,
     LongDescription,
     Definitions,
     Definition,
     Example,
+    Synonym
 }
 
 impl From<ElementSelector> for Selector {
     fn from(value: ElementSelector) -> Self {
         let css_selector = match value {
             ElementSelector::Header => "[id=hdr-word-area]",
+            ElementSelector::IpaSection => ".ipa-section",
             ElementSelector::OtherForms => ".word-forms > b:nth-child(1)",
             ElementSelector::ShortDescription => ".short",
             ElementSelector::LongDescription => ".long",
             ElementSelector::Definitions => ".word-definitions > ol > li",
             ElementSelector::Definition => ".definition",
             ElementSelector::Example => ".example",
+            ElementSelector::Synonym => ".defContent > .instances .word"
         };
 
         Selector::parse(css_selector)
@@ -94,6 +118,7 @@ impl From<ElementSelector> for Selector {
 
 pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
     let bypasser = cloudflare_bypasser::Bypasser::new();
+    // TODO handle redirects and not found page
     let html = bypasser
         .get(get_word_url(word).as_str())
         .await
@@ -138,12 +163,14 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
         )
         .trim()
         .to_string();
+        
 
-    let definitions = scrape_definitions(html_doc)?;
+    let definitions = scrape_definitions(html_doc.clone())?;
+    let pronunciations = scrape_pronunciations(html_doc).await?;
 
     let word = Word {
         header,
-        html: html.trim().to_string(),
+        pronunciations,
         other_forms,
         short_description,
         long_description,
@@ -152,6 +179,11 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
     };
 
     Ok(word)
+}
+
+async fn scrape_pronunciations(html: Html) -> Result<Vec<Pronunciation>, ScrapeErr> {
+    Ok(Vec::new())
+    // html.select(&ElementSelector::IpaSection.into())
 }
 
 fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
@@ -197,11 +229,18 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                 })
                 .collect();
 
+            let synonyms: Vec<String> = el.select(&ElementSelector::Synonym.into())
+                .map(|el| {
+                    el.text().next().unwrap_or_default().to_string()
+                })
+                .collect();
+
             Ok(Definition {
                 variant,
                 description,
                 image: None,
                 short_examples,
+                synonyms
             })
         })
         .filter_map(|x: Result<Definition, ScrapeErr>| x.ok())
