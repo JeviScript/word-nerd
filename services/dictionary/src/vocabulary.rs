@@ -1,6 +1,6 @@
-use scraper::{Html, Selector};
-use serde::{Deserialize, Serialize};
 use crate::cloudflare_bypasser;
+use scraper::{ElementRef, Html, Selector};
+use serde::{Deserialize, Serialize};
 
 static DEFINITION_BASE_URL: &str = "https://www.vocabulary.com/dictionary";
 static EXAMPLES_BASE_URL: &str = "https://corpus.vocabulary.com/api/1.0/examples.json";
@@ -19,21 +19,21 @@ pub struct Word {
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Pronunciation {
     pub variant: PronunciationVariant,
-    pub audio: Audio,
     pub ipa_str: String, // https://www.vocabulary.com/resources/ipa-pronunciation/
+    pub audio: Option<Audio>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
 pub struct Audio {
-    pub format: String,
+    pub content_type: String, // video/mp4 , audio/mpeg
     pub bytes: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
 pub enum PronunciationVariant {
     #[default]
-    UK,
-    USA,
+    Uk,
+    Usa,
     Other,
 }
 
@@ -94,25 +94,34 @@ enum ElementSelector {
     Definitions,
     Definition,
     Example,
-    Synonym
+    Synonym,
 }
 
 impl From<ElementSelector> for Selector {
     fn from(value: ElementSelector) -> Self {
         let css_selector = match value {
             ElementSelector::Header => "[id=hdr-word-area]",
-            ElementSelector::IpaSection => ".ipa-section",
+            ElementSelector::IpaSection => ".ipa-with-audio",
             ElementSelector::OtherForms => ".word-forms > b:nth-child(1)",
             ElementSelector::ShortDescription => ".short",
             ElementSelector::LongDescription => ".long",
             ElementSelector::Definitions => ".word-definitions > ol > li",
             ElementSelector::Definition => ".definition",
             ElementSelector::Example => ".example",
-            ElementSelector::Synonym => ".defContent > .instances .word"
+            ElementSelector::Synonym => ".defContent > .instances .word",
         };
 
         Selector::parse(css_selector)
             .unwrap_or_else(|_| panic!("Could not parse the css_selector: {css_selector}"))
+    }
+}
+
+struct Css(&'static str);
+
+impl From<Css> for Selector {
+    fn from(css_selector: Css) -> Self {
+        Selector::parse(css_selector.0)
+            .unwrap_or_else(|_| panic!("Could not parse the css_selector: {}", css_selector.0))
     }
 }
 
@@ -163,10 +172,9 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
         )
         .trim()
         .to_string();
-        
 
     let definitions = scrape_definitions(html_doc.clone())?;
-    let pronunciations = scrape_pronunciations(html_doc).await?;
+    let pronunciations = scrape_pronunciations(html_doc).await;
 
     let word = Word {
         header,
@@ -181,9 +189,111 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
     Ok(word)
 }
 
-async fn scrape_pronunciations(html: Html) -> Result<Vec<Pronunciation>, ScrapeErr> {
-    Ok(Vec::new())
-    // html.select(&ElementSelector::IpaSection.into())
+async fn scrape_pronunciations(html: Html) -> Vec<Pronunciation> {
+    let parsed: Vec<_> = {
+        html.select(&ElementSelector::IpaSection.into())
+            .map(|el| {
+                let variant = match el.select(&Css("div").into()).next() {
+                    Some(el) => {
+                        let sens = scraper::CaseSensitivity::AsciiCaseInsensitive;
+                        let el = el.value();
+                        if el.has_class("us-flag-icon", sens) {
+                            PronunciationVariant::Usa
+                        } else if el.has_class("uk-flag-icon", sens) {
+                            PronunciationVariant::Uk
+                        } else {
+                            PronunciationVariant::Other
+                        }
+                    }
+                    None => PronunciationVariant::Other,
+                };
+
+                let ipa_str = el
+                    .select(&Css("h3").into())
+                    .next()
+                    .map_or_else(|| "", |val| val.text().next().unwrap_or_default())
+                    .to_string();
+
+                let audio_src_url = get_audio_src_url(el);
+
+                (variant, ipa_str, audio_src_url)
+            })
+            .collect()
+    };
+
+    let async_result = parsed
+        .into_iter()
+        .map(|(variant, ipa_str, audio_src)| async {
+            let audio: Option<Audio> = match audio_src {
+                Some(url) => get_audio_from_url(url).await,
+                None => None,
+            };
+
+            Pronunciation {
+                variant,
+                ipa_str,
+                audio,
+            }
+        });
+
+    futures::future::join_all(async_result).await
+}
+
+fn get_audio_src_url(el: ElementRef) -> Option<String> {
+    let url: Option<String> = el.select(&Css(".audio").into()).next().map_or_else(
+        || None,
+        |val| {
+            let found = val.value().attrs().find(|(k, _v)| *k == "data-audio");
+
+            let url: Option<String> = if let Some(val) = found {
+                let us_url = format!("https://audio.vocab.com/1.0/us/{}.mp3", val.1);
+                Some(us_url)
+            } else {
+                let audio_el = val.select(&Css("audio").into()).next();
+                if let Some(el) = audio_el {
+                    let src = el
+                        .value()
+                        .attrs()
+                        .find(|(k, _v)| *k == "src")
+                        .map(|(_k, v)| v.to_string());
+                    src
+                } else {
+                    None
+                }
+            };
+            url
+        },
+    );
+    url
+}
+
+async fn get_audio_from_url(url: String) -> Option<Audio> {
+    let response = reqwest::get(url).await;
+
+    let audio = match response {
+        Ok(res) => {
+            let content_type = match res.headers().get(reqwest::header::CONTENT_TYPE) {
+                Some(val) => match val.to_str() {
+                    Ok(val) => Some(val.to_string()),
+                    Err(_) => None,
+                },
+                None => None,
+            };
+
+            let bytes = res.bytes().await;
+
+            match (content_type, bytes) {
+                (Some(val), Ok(bytes)) => Some(Audio {
+                    content_type: val,
+                    bytes: bytes.into_iter().collect::<Vec<u8>>(),
+                }),
+                _ => None,
+            }
+        }
+        Err(_err) => None,
+    };
+
+    audio
 }
 
 fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
@@ -215,7 +325,7 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                     el.text()
                         .filter_map(|x| {
                             // believe it or not but those two single “ quotes are not the same
-                            let without_quoutes = x.replace('“', "").replace('”', "");
+                            let without_quoutes = x.replace(['“', '”'], "");
                             let trimmed = without_quoutes.trim().to_string();
                             match trimmed.is_empty() {
                                 true => None,
@@ -229,10 +339,9 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                 })
                 .collect();
 
-            let synonyms: Vec<String> = el.select(&ElementSelector::Synonym.into())
-                .map(|el| {
-                    el.text().next().unwrap_or_default().to_string()
-                })
+            let synonyms: Vec<String> = el
+                .select(&ElementSelector::Synonym.into())
+                .map(|el| el.text().next().unwrap_or_default().to_string())
                 .collect();
 
             Ok(Definition {
@@ -240,7 +349,7 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                 description,
                 image: None,
                 short_examples,
-                synonyms
+                synonyms,
             })
         })
         .filter_map(|x: Result<Definition, ScrapeErr>| x.ok())
@@ -292,4 +401,50 @@ async fn scrape_examples(word: &str) -> Result<Vec<Example>, ScrapeErr> {
         .collect();
 
     Ok(examples)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn html_is_sync() {
+        fn is_send<T: Send>() {}
+        is_send::<Html>(); // compiles only if true
+    }
+
+    #[tokio::test]
+    async fn scrape_pronunciations_success() {
+        let html = r#"
+            <div class="ipa-section">
+                <div class="ipa-with-audio">
+                    <div class="us-flag-icon"></div>
+                        <a class="audio"></a>
+                        <span style="white-space:nowrap;"><h3>/sleɪt/</h3></span>
+                    </div>
+                <div class="ipa-with-audio">
+                    <div class="uk-flag-icon"></div>
+                    <a class="audio"><audio class="pron-audio"></audio></a>
+                    <span style="white-space:nowrap;"><h3>/sleɪt/</h3></span>
+                </div>
+                <a class="ipa-guide" href="/resources/ipa-pronunciation/">IPA guide</a>
+            </div>
+        "#;
+
+        let html = Html::parse_document(html);
+
+        // TODO mock http request
+        let result = scrape_pronunciations(html).await;
+
+        let first = &result[0];
+        let second = &result[1];
+
+        assert_eq!(first.variant, PronunciationVariant::Usa);
+        assert_eq!(first.ipa_str, "/sleɪt/");
+        assert_eq!(first.audio, None);
+
+        assert_eq!(second.variant, PronunciationVariant::Uk);
+        assert_eq!(second.ipa_str, "/sleɪt/");
+        assert_eq!(second.audio, None);
+    }
 }
