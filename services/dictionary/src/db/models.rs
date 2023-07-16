@@ -1,38 +1,55 @@
 use crate::vocabulary;
-
-use super::database::FindOneFilter;
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{doc, oid::ObjectId};
 use serde::{Deserialize, Serialize};
-
-// TODO explore type safety for field names when doing filtering
-/*  e.g.
-    let filter = User::filter();
-    filter.name = "Hoid";
-    User::update(filter);
-*/
-
-pub enum CollectionName {
-    Definitions,
-}
-
-impl From<CollectionName> for &str {
-    fn from(c: CollectionName) -> Self {
-        match c {
-            CollectionName::Definitions => "definitions",
-        }
-    }
-}
-
-pub trait DbCollection {
-    fn get_collection_name(&self) -> CollectionName;
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Definition {
     pub word: String,
-    pub vocabulary: vocabulary::Word,
+    pub vocabulary: VocabularyWord,
     pub oxford: Oxford,
     pub wordnik: Wordnik,
+}
+
+impl Definition {
+    pub fn new(word: String, vocabulary: VocabularyWord) -> Self {
+        Definition {
+            word,
+            vocabulary,
+            ..Default::default()
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct VocabularyWord {
+    pub header: String,
+    pub pronunciations: Vec<Pronunciation>,
+    pub other_forms: Vec<String>,
+    pub short_description: String,
+    pub long_description: String,
+    pub definitions: Vec<vocabulary::Definition>,
+    pub examples: Vec<vocabulary::Example>,
+}
+
+impl VocabularyWord {
+    pub fn new(word: vocabulary::Word, pronunciations: Vec<Pronunciation>) -> Self {
+        VocabularyWord {
+            header: word.header,
+            pronunciations,
+            other_forms: word.other_forms,
+            short_description: word.short_description,
+            long_description: word.long_description,
+            definitions: word.definitions,
+            examples: word.examples
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct Pronunciation {
+    pub variant: vocabulary::PronunciationVariant,
+    pub ipa_str: String,
+    pub audio_id: Option<ObjectId>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -41,14 +58,11 @@ pub struct Oxford {}
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Wordnik {}
 
-impl DbCollection for Definition {
-    fn get_collection_name(&self) -> CollectionName {
-        CollectionName::Definitions
-    }
-}
-
-impl FindOneFilter for Definition {
-    fn find_one_filter(&self) -> Document {
-        doc! {"word": &self.word}
-    }
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+pub struct Audio {
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+    pub word: String,
+    pub content_type: String, // video/mp4 , audio/mpeg
+    pub bytes: Vec<u8>,
 }

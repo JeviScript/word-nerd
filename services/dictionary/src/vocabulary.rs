@@ -19,7 +19,9 @@ pub struct Word {
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Pronunciation {
     pub variant: PronunciationVariant,
-    pub ipa_str: String, // https://www.vocabulary.com/resources/ipa-pronunciation/
+    // https://www.vocabulary.com/resources/ipa-pronunciation/
+    pub ipa_str: String, 
+    // TODO make it key reference to another table
     pub audio: Option<Audio>,
 }
 

@@ -1,5 +1,5 @@
 use crate::env::Env;
-use db::{models::Definition, Db};
+use db::{models::{Definition, VocabularyWord}, Db, repository::Repository};
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
     GetWordDefinitionsReply, GetWordDefinitionsRequest,
@@ -18,11 +18,12 @@ static ENV: OnceLock<Env> = OnceLock::new();
 #[derive(Debug)]
 pub struct DictionaryService {
     pub db: Db,
+    pub repository: Repository
 }
 
 impl DictionaryService {
-    pub fn new(db: Db) -> DictionaryService {
-        DictionaryService { db }
+    pub fn new(db: Db, repository: Repository) -> DictionaryService {
+        DictionaryService { db, repository }
     }
 }
 
@@ -42,15 +43,19 @@ impl Dictionary for DictionaryService {
             })
             .unwrap_or_default();
 
-        let definition = Definition {
-            word: word.to_string(),
-            vocabulary: voc,
-            ..Default::default()
-        };
+        let pronunciations = self.repository.replace_vocabulary_audio(word.to_string(), voc.clone().pronunciations).await;
 
-        self.db
-            .insert_or_replace(definition)
-            .await
+        if let Err(_e) = pronunciations {
+            return Ok(Response::new(GetWordDefinitionsReply { success: false }));
+        }
+
+        let pronunciations = pronunciations.unwrap();
+
+        let voc = VocabularyWord::new(voc, pronunciations);
+
+        let definition = Definition::new(word, voc);
+
+        self.repository.replace_definition(definition).await
             .map_err(|e| Status::internal(format!("{:?}", e)))?;
 
         Ok(Response::new(GetWordDefinitionsReply { success: true }))
@@ -68,8 +73,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Env::init();
 
     let db = Db::new(Env::vars().db_connection_uri, "dictionary").await;
+    let repository = Repository::new(&db.db); 
 
-    let service = DictionaryService::new(db);
+    let service = DictionaryService::new(db, repository);
 
     let addr = "0.0.0.0:80".parse()?;
     Server::builder()
