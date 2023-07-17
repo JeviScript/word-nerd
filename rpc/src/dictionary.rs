@@ -6,10 +6,86 @@ pub struct GetWordDefinitionsRequest {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct GetWordDefinitionsReply {
-    /// TODO
+pub struct GetWordDefinitionsResponse {
+    #[prost(string, tag = "1")]
+    pub word: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub vocabulary: ::core::option::Option<VocabularyWord>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VocabularyWord {
+    #[prost(string, tag = "1")]
+    pub header: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub pronunciations: ::prost::alloc::vec::Vec<Pronunciation>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Pronunciation {
+    #[prost(enumeration = "PronunciationVariant", tag = "1")]
+    pub variant: i32,
+    #[prost(string, tag = "2")]
+    pub ipa_str: ::prost::alloc::string::String,
+    #[prost(string, optional, tag = "3")]
+    pub audio_id: ::core::option::Option<::prost::alloc::string::String>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InvalidateWordRequest {
+    #[prost(string, tag = "1")]
+    pub word: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct InvalidateWordResponse {
     #[prost(bool, tag = "1")]
     pub success: bool,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAudioRequest {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetAudioResponse {
+    #[prost(string, tag = "1")]
+    pub word: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub content_type: ::prost::alloc::string::String,
+    #[prost(bytes = "vec", tag = "3")]
+    pub bytes: ::prost::alloc::vec::Vec<u8>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum PronunciationVariant {
+    Uk = 0,
+    Usa = 1,
+    Other = 2,
+}
+impl PronunciationVariant {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            PronunciationVariant::Uk => "Uk",
+            PronunciationVariant::Usa => "Usa",
+            PronunciationVariant::Other => "Other",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "Uk" => Some(Self::Uk),
+            "Usa" => Some(Self::Usa),
+            "Other" => Some(Self::Other),
+            _ => None,
+        }
+    }
 }
 /// Generated client implementations.
 pub mod dictionary_client {
@@ -100,7 +176,7 @@ pub mod dictionary_client {
             &mut self,
             request: impl tonic::IntoRequest<super::GetWordDefinitionsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetWordDefinitionsReply>,
+            tonic::Response<super::GetWordDefinitionsResponse>,
             tonic::Status,
         > {
             self.inner
@@ -121,6 +197,56 @@ pub mod dictionary_client {
                 .insert(GrpcMethod::new("dictionary.Dictionary", "GetWordDefinitions"));
             self.inner.unary(req, path, codec).await
         }
+        pub async fn invalidate_word(
+            &mut self,
+            request: impl tonic::IntoRequest<super::InvalidateWordRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::InvalidateWordResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/dictionary.Dictionary/InvalidateWord",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("dictionary.Dictionary", "InvalidateWord"));
+            self.inner.unary(req, path, codec).await
+        }
+        pub async fn get_audio(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetAudioRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetAudioResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/dictionary.Dictionary/GetAudio",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut()
+                .insert(GrpcMethod::new("dictionary.Dictionary", "GetAudio"));
+            self.inner.unary(req, path, codec).await
+        }
     }
 }
 /// Generated server implementations.
@@ -134,7 +260,21 @@ pub mod dictionary_server {
             &self,
             request: tonic::Request<super::GetWordDefinitionsRequest>,
         ) -> std::result::Result<
-            tonic::Response<super::GetWordDefinitionsReply>,
+            tonic::Response<super::GetWordDefinitionsResponse>,
+            tonic::Status,
+        >;
+        async fn invalidate_word(
+            &self,
+            request: tonic::Request<super::InvalidateWordRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::InvalidateWordResponse>,
+            tonic::Status,
+        >;
+        async fn get_audio(
+            &self,
+            request: tonic::Request<super::GetAudioRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetAudioResponse>,
             tonic::Status,
         >;
     }
@@ -224,7 +364,7 @@ pub mod dictionary_server {
                         T: Dictionary,
                     > tonic::server::UnaryService<super::GetWordDefinitionsRequest>
                     for GetWordDefinitionsSvc<T> {
-                        type Response = super::GetWordDefinitionsReply;
+                        type Response = super::GetWordDefinitionsResponse;
                         type Future = BoxFuture<
                             tonic::Response<Self::Response>,
                             tonic::Status,
@@ -248,6 +388,96 @@ pub mod dictionary_server {
                     let fut = async move {
                         let inner = inner.0;
                         let method = GetWordDefinitionsSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/dictionary.Dictionary/InvalidateWord" => {
+                    #[allow(non_camel_case_types)]
+                    struct InvalidateWordSvc<T: Dictionary>(pub Arc<T>);
+                    impl<
+                        T: Dictionary,
+                    > tonic::server::UnaryService<super::InvalidateWordRequest>
+                    for InvalidateWordSvc<T> {
+                        type Response = super::InvalidateWordResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::InvalidateWordRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                (*inner).invalidate_word(request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = InvalidateWordSvc(inner);
+                        let codec = tonic::codec::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/dictionary.Dictionary/GetAudio" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetAudioSvc<T: Dictionary>(pub Arc<T>);
+                    impl<
+                        T: Dictionary,
+                    > tonic::server::UnaryService<super::GetAudioRequest>
+                    for GetAudioSvc<T> {
+                        type Response = super::GetAudioResponse;
+                        type Future = BoxFuture<
+                            tonic::Response<Self::Response>,
+                            tonic::Status,
+                        >;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetAudioRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move { (*inner).get_audio(request).await };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let inner = inner.0;
+                        let method = GetAudioSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

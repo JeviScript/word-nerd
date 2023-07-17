@@ -10,6 +10,14 @@ pub trait FindOneFilter {
 #[derive(Debug)]
 pub enum DbErr {
     QueryErr(mongodb::error::Error),
+    ParseBsonErr(mongodb::bson::oid::Error),
+    Unexpected
+}
+
+impl From<DbErr> for String {
+    fn from(value: DbErr) -> Self {
+        format!("{:?}", value)
+    }
 }
 
 #[derive(Debug)]

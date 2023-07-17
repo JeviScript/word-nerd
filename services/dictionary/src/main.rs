@@ -1,8 +1,9 @@
 use crate::env::Env;
-use db::{models::{Definition, VocabularyWord}, Db, repository::Repository};
+use db::{repository::Repository, Db};
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
-    GetWordDefinitionsReply, GetWordDefinitionsRequest,
+    GetWordDefinitionsRequest, GetWordDefinitionsResponse, InvalidateWordRequest,
+    InvalidateWordResponse, GetAudioRequest, GetAudioResponse,
 };
 use std::sync::OnceLock;
 use tonic::{transport::Server, Request, Response, Status};
@@ -10,6 +11,7 @@ use tonic::{transport::Server, Request, Response, Status};
 mod cloudflare_bypasser;
 mod db;
 mod env;
+mod service;
 mod vocabulary;
 
 // global vars
@@ -17,13 +19,12 @@ static ENV: OnceLock<Env> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct DictionaryService {
-    pub db: Db,
-    pub repository: Repository
+    pub repository: Repository,
 }
 
 impl DictionaryService {
-    pub fn new(db: Db, repository: Repository) -> DictionaryService {
-        DictionaryService { db, repository }
+    pub fn new(repository: Repository) -> DictionaryService {
+        DictionaryService { repository }
     }
 }
 
@@ -32,33 +33,45 @@ impl Dictionary for DictionaryService {
     async fn get_word_definitions(
         &self,
         request: Request<GetWordDefinitionsRequest>,
-    ) -> Result<Response<GetWordDefinitionsReply>, Status> {
+    ) -> Result<Response<GetWordDefinitionsResponse>, Status> {
         let word = request.into_inner().word;
-        // TODO CQRS ??
-        let voc = vocabulary::scrape(word.as_str())
-            .await
-            .map_err(|e| {
-                println!("{:?}", e);
-                e
-            })
-            .unwrap_or_default();
 
-        let pronunciations = self.repository.replace_vocabulary_audio(word.to_string(), voc.clone().pronunciations).await;
+        let response = self.get_word_definitions(word).await;
 
-        if let Err(_e) = pronunciations {
-            return Ok(Response::new(GetWordDefinitionsReply { success: false }));
+        match response {
+            Ok(val) => Ok(Response::new(val)),
+            Err(err) => {
+                println!("{:?}", err);
+                let err = format!("{:?}", err);
+                return Err(Status::new(tonic::Code::Internal, err));
+            }
         }
+    }
 
-        let pronunciations = pronunciations.unwrap();
+    async fn invalidate_word(
+        &self,
+        request: Request<InvalidateWordRequest>,
+    ) -> Result<Response<InvalidateWordResponse>, Status> {
+        let word = request.into_inner().word;
 
-        let voc = VocabularyWord::new(voc, pronunciations);
+        match self.invalidate_word(word).await {
+            Ok(_) => Ok(Response::new(InvalidateWordResponse { success: true })),
+            Err(_) => Ok(Response::new(InvalidateWordResponse { success: false })),
+        }
+    }
 
-        let definition = Definition::new(word, voc);
+    async fn get_audio(
+        &self,
+        request: Request<GetAudioRequest>
+    ) -> Result<Response<GetAudioResponse>, Status> {
+        let id = request.into_inner().id;
 
-        self.repository.replace_definition(definition).await
-            .map_err(|e| Status::internal(format!("{:?}", e)))?;
+        let audio = self.get_audio(id.clone()).await.map_err(Status::internal)?;
 
-        Ok(Response::new(GetWordDefinitionsReply { success: true }))
+        match audio {
+            Some(a) => Ok(Response::new(a)),
+            None => Err(Status::not_found(format!("Not found: {}", id)))
+        }
     }
 }
 
@@ -73,9 +86,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Env::init();
 
     let db = Db::new(Env::vars().db_connection_uri, "dictionary").await;
-    let repository = Repository::new(&db.db); 
+    let repository = Repository::new(&db.db);
 
-    let service = DictionaryService::new(db, repository);
+    let service = DictionaryService::new(repository);
 
     let addr = "0.0.0.0:80".parse()?;
     Server::builder()

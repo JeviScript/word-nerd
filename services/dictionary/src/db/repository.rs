@@ -23,13 +23,24 @@ impl Repository {
         }
     }
 
-    pub async fn get_definition(&self, word: &str) -> Option<Definition> {
+    pub async fn get_definition(&self, word: &str) -> Result<Option<Definition>, DbErr> {
         let filter = doc! {"word" : word};
 
-        match self.definitions.find_one(filter, None).await {
-            Ok(val) => val,
-            Err(_) => None,
-        }
+        self.definitions
+            .find_one(filter, None)
+            .await
+            .map_err(DbErr::QueryErr)
+    }
+
+    pub async fn delete_definition(&self, word: &str) -> Result<(), DbErr> {
+        let filter = doc! {"word" : word};
+
+        self.definitions
+            .delete_one(filter, None)
+            .await
+            .map_err(DbErr::QueryErr)?;
+
+        Ok(())
     }
 
     pub async fn replace_definition(&self, definition: Definition) -> Result<(), DbErr> {
@@ -90,5 +101,12 @@ impl Repository {
 
         let res = futures::future::join_all(data).await;
         Ok(res)
+    }
+
+    pub async fn get_audio(&self, id: String) -> Result<Option<Audio>, DbErr> {
+        let object_id = ObjectId::parse_str(id).map_err(DbErr::ParseBsonErr)?;
+        let filter = doc! {"_id": object_id};
+        self.audio.find_one(filter, None).await
+            .map_err(DbErr::QueryErr)
     }
 }

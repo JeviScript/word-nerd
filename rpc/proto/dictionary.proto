@@ -2,14 +2,51 @@ syntax = "proto3";
 package dictionary;
 
 service Dictionary {
-    rpc GetWordDefinitions (GetWordDefinitionsRequest) returns (GetWordDefinitionsReply);
+    rpc GetWordDefinitions (GetWordDefinitionsRequest) returns (GetWordDefinitionsResponse);
+    rpc InvalidateWord (InvalidateWordRequest) returns (InvalidateWordResponse);
+    rpc GetAudio (GetAudioRequest) returns (GetAudioResponse);
 }
 
 message GetWordDefinitionsRequest {
     string word = 1;
 }
 
-message GetWordDefinitionsReply {
-    // TODO 
+message GetWordDefinitionsResponse {
+    string word = 1; 
+    VocabularyWord vocabulary = 2;
+}
+
+message VocabularyWord {
+  string header = 1;
+  repeated Pronunciation pronunciations = 2;
+}
+
+enum PronunciationVariant {
+  Uk = 0;
+  Usa = 1;
+  Other = 2;
+}
+
+message Pronunciation {
+  PronunciationVariant variant = 1; 
+  string ipa_str = 2;
+  optional string audio_id = 3;
+}
+
+message InvalidateWordRequest {
+  string word = 1;
+}
+
+message InvalidateWordResponse {
     bool success = 1;
+}
+
+message GetAudioRequest {
+  string id = 1;
+}
+
+message GetAudioResponse {
+  string word = 1;
+  string content_type = 2;
+  bytes bytes = 3;
 }
