@@ -19,18 +19,49 @@ message GetWordDefinitionsResponse {
 message VocabularyWord {
   string header = 1;
   repeated Pronunciation pronunciations = 2;
+  repeated string other_forms = 3;
+  string short_description = 4;
+  string long_description = 5;
+  repeated VocabularyDefinition definitions = 6;
+  repeated VocabularyExample examples = 7;
 }
 
-enum PronunciationVariant {
-  Uk = 0;
-  Usa = 1;
-  Other = 2;
-}
+
 
 message Pronunciation {
+  enum PronunciationVariant {
+    Uk = 0;
+    Usa = 1;
+    Other = 2;
+  }
+
   PronunciationVariant variant = 1; 
   string ipa_str = 2;
   optional string audio_id = 3;
+}
+
+message VocabularyDefinition { 
+  enum KnownWordVariant {
+    Noun = 0;
+    Verb = 1;
+    Adjective = 2;
+    Adverb = 3;
+  }
+
+  oneof WordVariant {
+    KnownWordVariant word_variant = 1;
+    string other_word_variant = 2;
+  }    
+
+  string description = 6;
+  repeated string short_examples = 7;
+  repeated string synonyms = 8;
+}
+
+message VocabularyExample {
+  string sentence = 1;
+  string author = 2;
+  string source_title = 3;
 }
 
 message InvalidateWordRequest {

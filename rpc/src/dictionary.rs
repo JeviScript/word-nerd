@@ -19,16 +19,143 @@ pub struct VocabularyWord {
     pub header: ::prost::alloc::string::String,
     #[prost(message, repeated, tag = "2")]
     pub pronunciations: ::prost::alloc::vec::Vec<Pronunciation>,
+    #[prost(string, repeated, tag = "3")]
+    pub other_forms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, tag = "4")]
+    pub short_description: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub long_description: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "6")]
+    pub definitions: ::prost::alloc::vec::Vec<VocabularyDefinition>,
+    #[prost(message, repeated, tag = "7")]
+    pub examples: ::prost::alloc::vec::Vec<VocabularyExample>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Pronunciation {
-    #[prost(enumeration = "PronunciationVariant", tag = "1")]
+    #[prost(enumeration = "pronunciation::PronunciationVariant", tag = "1")]
     pub variant: i32,
     #[prost(string, tag = "2")]
     pub ipa_str: ::prost::alloc::string::String,
     #[prost(string, optional, tag = "3")]
     pub audio_id: ::core::option::Option<::prost::alloc::string::String>,
+}
+/// Nested message and enum types in `Pronunciation`.
+pub mod pronunciation {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum PronunciationVariant {
+        Uk = 0,
+        Usa = 1,
+        Other = 2,
+    }
+    impl PronunciationVariant {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                PronunciationVariant::Uk => "Uk",
+                PronunciationVariant::Usa => "Usa",
+                PronunciationVariant::Other => "Other",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "Uk" => Some(Self::Uk),
+                "Usa" => Some(Self::Usa),
+                "Other" => Some(Self::Other),
+                _ => None,
+            }
+        }
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VocabularyDefinition {
+    #[prost(string, tag = "6")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "7")]
+    pub short_examples: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "8")]
+    pub synonyms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(oneof = "vocabulary_definition::WordVariant", tags = "1, 2")]
+    pub word_variant: ::core::option::Option<vocabulary_definition::WordVariant>,
+}
+/// Nested message and enum types in `VocabularyDefinition`.
+pub mod vocabulary_definition {
+    #[derive(
+        Clone,
+        Copy,
+        Debug,
+        PartialEq,
+        Eq,
+        Hash,
+        PartialOrd,
+        Ord,
+        ::prost::Enumeration
+    )]
+    #[repr(i32)]
+    pub enum KnownWordVariant {
+        Noun = 0,
+        Verb = 1,
+        Adjective = 2,
+        Adverb = 3,
+    }
+    impl KnownWordVariant {
+        /// String value of the enum field names used in the ProtoBuf definition.
+        ///
+        /// The values are not transformed in any way and thus are considered stable
+        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+        pub fn as_str_name(&self) -> &'static str {
+            match self {
+                KnownWordVariant::Noun => "Noun",
+                KnownWordVariant::Verb => "Verb",
+                KnownWordVariant::Adjective => "Adjective",
+                KnownWordVariant::Adverb => "Adverb",
+            }
+        }
+        /// Creates an enum from field names used in the ProtoBuf definition.
+        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+            match value {
+                "Noun" => Some(Self::Noun),
+                "Verb" => Some(Self::Verb),
+                "Adjective" => Some(Self::Adjective),
+                "Adverb" => Some(Self::Adverb),
+                _ => None,
+            }
+        }
+    }
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum WordVariant {
+        #[prost(enumeration = "KnownWordVariant", tag = "1")]
+        WordVariant(i32),
+        #[prost(string, tag = "2")]
+        OtherWordVariant(::prost::alloc::string::String),
+    }
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct VocabularyExample {
+    #[prost(string, tag = "1")]
+    pub sentence: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub author: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub source_title: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -57,35 +184,6 @@ pub struct GetAudioResponse {
     pub content_type: ::prost::alloc::string::String,
     #[prost(bytes = "vec", tag = "3")]
     pub bytes: ::prost::alloc::vec::Vec<u8>,
-}
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-#[repr(i32)]
-pub enum PronunciationVariant {
-    Uk = 0,
-    Usa = 1,
-    Other = 2,
-}
-impl PronunciationVariant {
-    /// String value of the enum field names used in the ProtoBuf definition.
-    ///
-    /// The values are not transformed in any way and thus are considered stable
-    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-    pub fn as_str_name(&self) -> &'static str {
-        match self {
-            PronunciationVariant::Uk => "Uk",
-            PronunciationVariant::Usa => "Usa",
-            PronunciationVariant::Other => "Other",
-        }
-    }
-    /// Creates an enum from field names used in the ProtoBuf definition.
-    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-        match value {
-            "Uk" => Some(Self::Uk),
-            "Usa" => Some(Self::Usa),
-            "Other" => Some(Self::Other),
-            _ => None,
-        }
-    }
 }
 /// Generated client implementations.
 pub mod dictionary_client {

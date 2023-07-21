@@ -58,9 +58,9 @@ pub struct Definition {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Example {
-    sentence: String,
-    author: String,
-    source_title: String,
+    pub sentence: String,
+    pub author: String,
+    pub source_title: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -347,7 +347,7 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
             Ok(Definition {
                 variant,
                 description,
-                image: None,
+                image: None, // TODO image 
                 short_examples,
                 synonyms,
             })
