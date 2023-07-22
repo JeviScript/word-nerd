@@ -92,7 +92,7 @@ pub async fn verify_token(token: String) -> Result<GoogleUser, VerifyTokenErr> {
         .await
         .map_err(|err| VerifyTokenErr::GetCertificatesErr(err.to_string()))?;
 
-    let cert_key = cert
+    let cert_key = cert // TODO There are multiple certs, only one is a fit
         .keys
         .iter()
         .find(|&cert_key| cert_key.alg == "RS256")

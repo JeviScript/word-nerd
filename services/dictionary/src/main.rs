@@ -36,6 +36,8 @@ impl Dictionary for DictionaryService {
     ) -> Result<Response<GetWordDefinitionsResponse>, Status> {
         let word = request.into_inner().word;
 
+        println!("Requesting {word}");
+
         let response = self.get_word_definitions(word).await;
 
         match response {

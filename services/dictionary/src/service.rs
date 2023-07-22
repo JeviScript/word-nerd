@@ -1,8 +1,8 @@
-use rpc::dictionary::{GetWordDefinitionsResponse, GetAudioResponse};
+use rpc::dictionary::{GetAudioResponse, GetWordDefinitionsResponse};
 
 use crate::{
     db::{
-        models::{Definition, VocabularyWord, Audio},
+        models::{Audio, Definition, VocabularyWord},
         DbErr,
     },
     vocabulary::{self, PronunciationVariant, WordVariant},
@@ -29,7 +29,10 @@ impl DictionaryService {
     }
 
     pub async fn get_audio(&self, id: String) -> Result<Option<GetAudioResponse>, DbErr> {
-       self.repository.get_audio(id).await.map(|o| o.map(|audio| audio.to_response()))
+        self.repository
+            .get_audio(id)
+            .await
+            .map(|o| o.map(|audio| audio.to_response()))
     }
 
     async fn create_definition(&self, word: String) -> Result<Definition, DbErr> {
@@ -66,22 +69,36 @@ impl Definition {
                     .clone()
                     .into_iter()
                     .map(|p| rpc::dictionary::Pronunciation {
-                        variant: rpc::dictionary::pronunciation::PronunciationVariant::from(p.variant) as i32,
+                        variant: rpc::dictionary::pronunciation::PronunciationVariant::from(
+                            p.variant,
+                        ) as i32,
                         ipa_str: p.ipa_str,
                         audio_id: p.audio_id.map(|id| id.to_string()),
                     })
                     .collect(),
-                definitions: self.vocabulary.definitions.clone().into_iter().map(|d| rpc::dictionary::VocabularyDefinition {
-                    description: d.description,
-                    short_examples: d.short_examples,
-                    synonyms: d.synonyms,
-                    word_variant: Some(d.variant.into())
-                }).collect(),
-                examples: self.vocabulary.examples.clone().into_iter().map(|e| rpc::dictionary::VocabularyExample {
-                    author: e.author,
-                    sentence: e.sentence,
-                    source_title: e.source_title
-                }).collect(),
+                definitions: self
+                    .vocabulary
+                    .definitions
+                    .clone()
+                    .into_iter()
+                    .map(|d| rpc::dictionary::VocabularyDefinition {
+                        description: d.description,
+                        short_examples: d.short_examples,
+                        synonyms: d.synonyms,
+                        word_variant: Some(d.variant.into()),
+                    })
+                    .collect(),
+                examples: self
+                    .vocabulary
+                    .examples
+                    .clone()
+                    .into_iter()
+                    .map(|e| rpc::dictionary::VocabularyExample {
+                        author: e.author,
+                        sentence: e.sentence,
+                        source_title: e.source_title,
+                    })
+                    .collect(),
                 other_forms: self.vocabulary.other_forms.clone(),
             }),
         }
@@ -103,22 +120,29 @@ impl From<WordVariant> for rpc::dictionary::vocabulary_definition::WordVariant {
     fn from(value: WordVariant) -> Self {
         use rpc::dictionary::vocabulary_definition as Prost;
         match value {
-            WordVariant::Noun => Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Noun as i32),
-            WordVariant::Verb => Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Verb as i32),
-            WordVariant::Adjective => Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adjective as i32),
-            WordVariant::Adverb => Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adverb as i32),
+            WordVariant::Noun => {
+                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Noun as i32)
+            }
+            WordVariant::Verb => {
+                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Verb as i32)
+            }
+            WordVariant::Adjective => {
+                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adjective as i32)
+            }
+            WordVariant::Adverb => {
+                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adverb as i32)
+            }
             WordVariant::Other(val) => Prost::WordVariant::OtherWordVariant(val),
         }
     }
 }
-
 
 impl Audio {
     fn to_response(&self) -> GetAudioResponse {
         GetAudioResponse {
             word: self.word.clone(),
             content_type: self.content_type.clone(),
-            bytes: self.bytes.clone()
+            bytes: self.bytes.clone(),
         }
     }
 }
