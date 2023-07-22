@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use base64::Engine;
-use jwt::{Header, PKeyWithDigest, Token, VerifyWithKey};
+use jwt::{Header, PKeyWithDigest, Token, Verified, VerifyWithKey};
 use openssl::{bn::BigNum, hash::MessageDigest, pkey::PKey, rsa::Rsa};
 use serde::{de::DeserializeOwned, Deserialize};
 use serde_json::Value;
@@ -79,7 +79,7 @@ pub enum VerifyTokenErr {
     ParseIntoBigNumErr(String),
     CreateRSAErr(String),
     CreatePKeyErr(String),
-    VerificationErr(String),
+    VerificationErr(jwt::error::Error),
     NoGoogleId,
 }
 
@@ -92,16 +92,37 @@ pub async fn verify_token(token: String) -> Result<GoogleUser, VerifyTokenErr> {
         .await
         .map_err(|err| VerifyTokenErr::GetCertificatesErr(err.to_string()))?;
 
-    let cert_key = cert // TODO There are multiple certs, only one is a fit
+    let verify_result = cert
         .keys
         .iter()
-        .find(|&cert_key| cert_key.alg == "RS256")
+        .find_map(|cert_key| {
+            if cert_key.alg != "RS256" {
+                return None;
+            };
+            try_verify(cert_key, &token).ok()
+        })
         .ok_or_else(|| {
             VerifyTokenErr::NoSupportedAlgCertErr(
                 "No supported certificare was found with RS256 key algorithm".to_owned(),
             )
         })?;
 
+    let claims = verify_result.claims();
+    let google_id = claims.get("sub").ok_or(VerifyTokenErr::NoGoogleId)?;
+    let google_user = GoogleUser {
+        google_id: google_id.clone().to_string().remove_quotes(),
+        first_name: or_default(claims.get("given_name")),
+        last_name: or_default(claims.get("family_name")),
+        email: or_default(claims.get("email")),
+    };
+
+    Ok(google_user)
+}
+
+fn try_verify(
+    cert_key: &OAuthCertKey,
+    token: &str,
+) -> Result<Token<Header, BTreeMap<String, Value>, Verified>, VerifyTokenErr> {
     let e_decoded = &base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(&cert_key.e)
         .map_err(|err| {
@@ -146,20 +167,9 @@ pub async fn verify_token(token: String) -> Result<GoogleUser, VerifyTokenErr> {
         key: pkey,
     };
 
-    let verify_result: Token<Header, BTreeMap<String, Value>, _> = token
+    token
         .verify_with_key(&rs256_public_key)
-        .map_err(|err| VerifyTokenErr::VerificationErr(err.to_string()))?;
-
-    let claims = verify_result.claims();
-    let google_id = claims.get("sub").ok_or(VerifyTokenErr::NoGoogleId)?;
-    let google_user = GoogleUser {
-        google_id: google_id.clone().to_string().remove_quotes(),
-        first_name: or_default(claims.get("given_name")),
-        last_name: or_default(claims.get("family_name")),
-        email: or_default(claims.get("email")),
-    };
-
-    Ok(google_user)
+        .map_err(VerifyTokenErr::VerificationErr)
 }
 
 fn or_default(option: Option<&Value>) -> String {

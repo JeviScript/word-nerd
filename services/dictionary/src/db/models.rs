@@ -59,7 +59,7 @@ pub struct Oxford {}
 pub struct Wordnik {}
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
-pub struct Audio {
+pub struct Audio { // TODO experiment with local storage systems
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub word: String,

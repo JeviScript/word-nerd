@@ -2,8 +2,8 @@ use crate::env::Env;
 use db::{repository::Repository, Db};
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
-    GetWordDefinitionsRequest, GetWordDefinitionsResponse, InvalidateWordRequest,
-    InvalidateWordResponse, GetAudioRequest, GetAudioResponse,
+    GetAudioRequest, GetAudioResponse, GetWordDefinitionsRequest, GetWordDefinitionsResponse,
+    InvalidateWordRequest, InvalidateWordResponse,
 };
 use std::sync::OnceLock;
 use tonic::{transport::Server, Request, Response, Status};
@@ -64,7 +64,7 @@ impl Dictionary for DictionaryService {
 
     async fn get_audio(
         &self,
-        request: Request<GetAudioRequest>
+        request: Request<GetAudioRequest>,
     ) -> Result<Response<GetAudioResponse>, Status> {
         let id = request.into_inner().id;
 
@@ -72,7 +72,7 @@ impl Dictionary for DictionaryService {
 
         match audio {
             Some(a) => Ok(Response::new(a)),
-            None => Err(Status::not_found(format!("Not found: {}", id)))
+            None => Err(Status::not_found(format!("Not found: {}", id))),
         }
     }
 }

@@ -63,7 +63,7 @@ export async function me(): Promise<User> {
 }
 
 export async function get_word(word: string) {
-	return get(`dict?word=${word}`)
+	return get(`dict/word/${word}`)
 }
 
 
