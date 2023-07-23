@@ -37,7 +37,7 @@ pub async fn scrape(word: &str) -> Result<Definition, ScrapeErr> {
     }
 }
 
-// gotta do it separatly to any async operations since html is not Send
+// gotta do it separately to any async operations since html is not Send
 fn scrape_html(html: &str) -> Scraped {
     let html = Html::parse_document(html);
     Scraped {
@@ -84,7 +84,7 @@ fn get_word_variant(html: &Html) -> String {
 }
 
 fn get_note(html: &Html) -> String {
-    html.select(&Css("div.entry .labels").into())
+    html.select(&Css("div.entry .labels:not(.idioms .labels)").into())
         .next()
         .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
         .trim()
@@ -361,20 +361,11 @@ fn get_similar_results(html: &Html) -> Vec<SimilarResult> {
             let word = el
                 .select(&Css("span").into())
                 .next()
-                .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
+                .map_or_else(|| "".to_string(), |mut el| el.join_text())
+                .trim()
                 .to_string();
 
-            let word_variant = el
-                .select(&Css("pos").into())
-                .next()
-                .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
-                .to_string();
-
-            SimilarResult {
-                id,
-                word,
-                word_variant: Some(word_variant),
-            }
+            SimilarResult { id, word }
         })
         .collect()
 }
@@ -533,6 +524,23 @@ mod tests {
     fn get_note_ok() {
         let html = parse_html(TestHtml::Oxford(OxfordHtml::Refrain1));
         assert_eq!("(formal)", get_note(&html).as_str());
+
+        let html = parse_html(TestHtml::Oxford(OxfordHtml::Cat1));
+        assert_eq!("", get_note(&html).as_str());
+    }
+
+    #[test]
+    fn get_similar_results_ok() {
+        let html = parse_html(TestHtml::Oxford(OxfordHtml::Cat1));
+        let results = get_similar_results(&html);
+        assert_eq!("cat_2", results[0].id);
+        assert_eq!("Cat", results[0].word);
+
+        assert_eq!("big-cat", results[1].id);
+        assert_eq!("big cat noun", results[1].word);
+
+        assert_eq!("the-cheshire-cat", results[17].id);
+        assert_eq!("the Cheshire Cat", results[17].word);
     }
 
     #[test]

@@ -1,4 +1,7 @@
-use crate::models::{vocabulary::{DefinitionDoc as VocDefinitionDoc, WordVariant}, shared::PronunciationVariant};
+use crate::models::{
+    shared::PronunciationVariant,
+    vocabulary::{DefinitionDoc as VocDefinitionDoc, WordVariant},
+};
 use rpc::dictionary::GetWordDefinitionsResponse;
 
 pub struct GetWordDefinitionsResponseBuilder {
@@ -51,10 +54,10 @@ impl VocDefinitionDoc {
 
 impl GetWordDefinitionsResponseBuilder {
     pub fn new(word: &str, voc: Option<VocDefinitionDoc>) -> Self {
-       Self {
+        Self {
             word: word.to_string(),
-            vocabulary: voc
-        } 
+            vocabulary: voc,
+        }
     }
 
     pub fn build(self) -> GetWordDefinitionsResponse {

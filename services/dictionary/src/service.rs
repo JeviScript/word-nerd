@@ -35,9 +35,10 @@ impl DictionaryService {
     }
 
     async fn create_definition(&self, word: &str) -> Result<DefinitionDoc, DbErr> {
-        let (vocabulary_id, oxford_id ) = tokio::join!(self.create_voc_definition(word), self.create_ox_definition(word));
-
-        // let (vocabulary_id, oxford_id) = futures::try_join!(voc_task, ox_task);
+        let (vocabulary_id, oxford_id) = tokio::join!(
+            self.create_voc_definition(word),
+            self.create_ox_definition(word)
+        );
 
         let definition = DefinitionDoc {
             word: word.to_string(),
@@ -52,27 +53,25 @@ impl DictionaryService {
 
     async fn create_voc_definition(&self, word: &str) -> Option<ObjectId> {
         match vocabulary::scrape(word).await {
-            Ok(scraped) => {
-                self.repository
-                    .save_voc_definition(scraped)
-                    .await
-                    .ok()
-                    .flatten()
-            },
-            Err(_) => None
+            Ok(scraped) => self
+                .repository
+                .save_voc_definition(scraped)
+                .await
+                .ok()
+                .flatten(),
+            Err(_) => None,
         }
     }
 
     async fn create_ox_definition(&self, word: &str) -> Option<ObjectId> {
         match oxford::scrape(word).await {
-            Ok(scraped) => {
-                self.repository
-                    .save_ox_definition(scraped)
-                    .await
-                    .ok()
-                    .flatten()
-            },
-            Err(_) => None
+            Ok(scraped) => self
+                .repository
+                .save_ox_definition(scraped)
+                .await
+                .ok()
+                .flatten(),
+            Err(_) => None,
         }
     }
 }

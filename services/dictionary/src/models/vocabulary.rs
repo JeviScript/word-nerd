@@ -47,4 +47,3 @@ pub struct Image {
     pub bytes: Vec<u8>,
     pub format: String,
 }
-

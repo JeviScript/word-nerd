@@ -1,5 +1,12 @@
-use crate::{models::{vocabulary::{Example, SubDefinition}, shared::{Audio, Pronunciation, PronunciationVariant}}, cloudflare_bypasser, utils::Css};
 use crate::models::vocabulary::WordVariant;
+use crate::{
+    cloudflare_bypasser,
+    models::{
+        shared::{Audio, Pronunciation, PronunciationVariant},
+        vocabulary::{Example, SubDefinition},
+    },
+    utils::Css,
+};
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
 

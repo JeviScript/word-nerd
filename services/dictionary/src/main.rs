@@ -1,6 +1,6 @@
 use crate::env::Env;
-use db::repository::Repository;
 use db::database::get_database_client;
+use db::repository::Repository;
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
     GetAudioRequest, GetAudioResponse, GetWordDefinitionsRequest, GetWordDefinitionsResponse,
@@ -11,13 +11,13 @@ use tonic::{transport::Server, Request, Response, Status};
 
 mod cloudflare_bypasser;
 mod db;
-mod env;
-mod service;
-mod vocabulary;
-mod oxford;
-mod utils;
-mod models;
 mod dtos;
+mod env;
+mod models;
+mod oxford;
+mod service;
+mod utils;
+mod vocabulary;
 
 #[cfg(test)]
 mod tests;

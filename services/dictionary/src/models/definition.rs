@@ -7,4 +7,3 @@ pub struct DefinitionDoc {
     pub vocabulary_id: Option<ObjectId>,
     pub oxford_id: Option<ObjectId>,
 }
-

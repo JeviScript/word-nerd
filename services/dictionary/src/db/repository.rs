@@ -5,11 +5,13 @@ use crate::models::vocabulary::DefinitionDoc as VocDefinitionDoc;
 use crate::oxford::Definition as OxScrapedDefinition;
 use crate::vocabulary::Definition as VocScrapedDefinition;
 use crate::{db::database::DbErr, models::definition::DefinitionDoc};
+use mongodb::options::FindOneOptions;
 use mongodb::{
     bson::{doc, oid::ObjectId},
     options::ReplaceOptions,
     Collection, Database,
 };
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct Repository {
@@ -17,6 +19,12 @@ pub struct Repository {
     pub audio: Collection<AudioDoc>,
     pub voc_definitions: Collection<VocDefinitionDoc>,
     pub ox_definitions: Collection<OxDefinitionDoc>,
+}
+
+#[derive(Deserialize)]
+struct Id {
+    #[serde(rename = "_id")]
+    pub id: ObjectId,
 }
 
 impl Repository {
@@ -93,13 +101,26 @@ impl Repository {
         let mut replace_options = ReplaceOptions::default();
         // inserts when finds None
         replace_options.upsert = Some(true);
-        let result = self
-            .voc_definitions
-            .replace_one(filter, def, replace_options)
+
+        self.voc_definitions
+            .replace_one(filter.clone(), def, replace_options)
             .await
             .map_err(DbErr::QueryErr)?;
 
-        let object_id = result.upserted_id.and_then(|id| id.as_object_id());
+        let object_id = self
+            .voc_definitions
+            .clone_with_type::<Id>()
+            .find_one(
+                filter.clone(),
+                FindOneOptions::builder()
+                    .projection(doc! {"_id": 1})
+                    .build(),
+            )
+            .await
+            .ok()
+            .flatten()
+            .map(|val| val.id);
+
         Ok(object_id)
     }
 
@@ -130,13 +151,25 @@ impl Repository {
         let mut replace_options = ReplaceOptions::default();
         // inserts when finds None
         replace_options.upsert = Some(true);
-        let result = self
-            .ox_definitions
-            .replace_one(filter, def, replace_options)
+        self.ox_definitions
+            .replace_one(filter.clone(), def, replace_options)
             .await
             .map_err(DbErr::QueryErr)?;
 
-        let object_id = result.upserted_id.and_then(|id| id.as_object_id());
+        let object_id = self
+            .ox_definitions
+            .clone_with_type::<Id>()
+            .find_one(
+                filter.clone(),
+                FindOneOptions::builder()
+                    .projection(doc! {"_id": 1})
+                    .build(),
+            )
+            .await
+            .ok()
+            .flatten()
+            .map(|val| val.id);
+
         Ok(object_id)
     }
 

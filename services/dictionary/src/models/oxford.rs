@@ -27,7 +27,6 @@ pub struct DefinitionDoc {
 pub struct SimilarResult {
     pub id: String,
     pub word: String,
-    pub word_variant: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
@@ -68,4 +67,3 @@ pub struct VebForm {
     pub word: String,
     pub pronunciations: Vec<Pronunciation>,
 }
-
