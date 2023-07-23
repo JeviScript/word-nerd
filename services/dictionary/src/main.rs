@@ -1,5 +1,6 @@
 use crate::env::Env;
-use db::{repository::Repository, Db};
+use db::repository::Repository;
+use db::database::get_database_client;
 use rpc::dictionary::{
     dictionary_server::{Dictionary, DictionaryServer},
     GetAudioRequest, GetAudioResponse, GetWordDefinitionsRequest, GetWordDefinitionsResponse,
@@ -13,6 +14,13 @@ mod db;
 mod env;
 mod service;
 mod vocabulary;
+mod oxford;
+mod utils;
+mod models;
+mod dtos;
+
+#[cfg(test)]
+mod tests;
 
 // global vars
 static ENV: OnceLock<Env> = OnceLock::new();
@@ -87,8 +95,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Env::init();
 
-    let db = Db::new(Env::vars().db_connection_uri, "dictionary").await;
-    let repository = Repository::new(&db.db);
+    let db = get_database_client(Env::vars().db_connection_uri, "dictionary").await;
+    let repository = Repository::new(db);
 
     let service = DictionaryService::new(repository);
 

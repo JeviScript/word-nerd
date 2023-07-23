@@ -1,4 +1,5 @@
-use crate::cloudflare_bypasser;
+use crate::{models::{vocabulary::{Example, SubDefinition}, shared::{Audio, Pronunciation, PronunciationVariant}}, cloudflare_bypasser, utils::Css};
+use crate::models::vocabulary::WordVariant;
 use scraper::{ElementRef, Html, Selector};
 use serde::{Deserialize, Serialize};
 
@@ -6,67 +7,15 @@ static DEFINITION_BASE_URL: &str = "https://www.vocabulary.com/dictionary";
 static EXAMPLES_BASE_URL: &str = "https://corpus.vocabulary.com/api/1.0/examples.json";
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Word {
+pub struct Definition {
+    pub id_ref: String,
     pub header: String,
     pub pronunciations: Vec<Pronunciation>,
     pub other_forms: Vec<String>,
     pub short_description: String,
     pub long_description: String,
-    pub definitions: Vec<Definition>,
+    pub definitions: Vec<SubDefinition>,
     pub examples: Vec<Example>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Pronunciation {
-    pub variant: PronunciationVariant,
-    pub ipa_str: String, 
-    pub audio: Option<Audio>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
-pub struct Audio {
-    pub content_type: String, // video/mp4 , audio/mpeg
-    pub bytes: Vec<u8>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
-pub enum PronunciationVariant {
-    #[default]
-    Uk,
-    Usa,
-    Other,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub enum WordVariant {
-    #[default]
-    Noun,
-    Verb,
-    Adjective,
-    Adverb,
-    Other(String),
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Definition {
-    pub variant: WordVariant,
-    pub description: String,
-    pub image: Option<Image>,
-    pub short_examples: Vec<String>,
-    pub synonyms: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Example {
-    pub sentence: String,
-    pub author: String,
-    pub source_title: String,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Image {
-    pub bytes: Vec<u8>,
-    pub format: String,
 }
 
 pub fn get_word_url(word: &str) -> String {
@@ -116,16 +65,7 @@ impl From<ElementSelector> for Selector {
     }
 }
 
-struct Css(&'static str);
-
-impl From<Css> for Selector {
-    fn from(css_selector: Css) -> Self {
-        Selector::parse(css_selector.0)
-            .unwrap_or_else(|_| panic!("Could not parse the css_selector: {}", css_selector.0))
-    }
-}
-
-pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
+pub async fn scrape(word: &str) -> Result<Definition, ScrapeErr> {
     let bypasser = cloudflare_bypasser::Bypasser::new();
     // TODO handle redirects and not found page
     let html = bypasser
@@ -176,7 +116,8 @@ pub async fn scrape(word: &str) -> Result<Word, ScrapeErr> {
     let definitions = scrape_definitions(html_doc.clone())?;
     let pronunciations = scrape_pronunciations(html_doc).await;
 
-    let word = Word {
+    let word = Definition {
+        id_ref: word.to_string(),
         header,
         pronunciations,
         other_forms,
@@ -296,7 +237,7 @@ async fn get_audio_from_url(url: String) -> Option<Audio> {
     audio
 }
 
-fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
+fn scrape_definitions(html: Html) -> Result<Vec<SubDefinition>, ScrapeErr> {
     let definitions = html
         .select(&ElementSelector::Definitions.into())
         .map(|el| {
@@ -344,15 +285,15 @@ fn scrape_definitions(html: Html) -> Result<Vec<Definition>, ScrapeErr> {
                 .map(|el| el.text().next().unwrap_or_default().to_string())
                 .collect();
 
-            Ok(Definition {
+            Ok(SubDefinition {
                 variant,
                 description,
-                image: None, // TODO image 
+                image: None, // TODO image
                 short_examples,
                 synonyms,
             })
         })
-        .filter_map(|x: Result<Definition, ScrapeErr>| x.ok())
+        .filter_map(|x: Result<SubDefinition, ScrapeErr>| x.ok())
         .collect();
 
     Ok(definitions)

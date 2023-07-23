@@ -1,6 +1,3 @@
-pub mod models;
 pub mod repository;
+pub mod database;
 
-pub use database::Db;
-pub use database::DbErr;
-mod database;

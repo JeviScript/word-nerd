@@ -1,27 +1,26 @@
+use crate::db::database::DbErr;
+use crate::dtos::GetWordDefinitionsResponseBuilder;
+use crate::models::audio::AudioDoc;
+use crate::models::definition::DefinitionDoc;
+use crate::{oxford, vocabulary, DictionaryService};
+use mongodb::bson::oid::ObjectId;
 use rpc::dictionary::{GetAudioResponse, GetWordDefinitionsResponse};
-
-use crate::{
-    db::{
-        models::{Audio, Definition, VocabularyWord},
-        DbErr,
-    },
-    vocabulary::{self, PronunciationVariant, WordVariant},
-    DictionaryService,
-};
 
 impl DictionaryService {
     pub async fn get_word_definitions(
         &self,
         word: String,
     ) -> Result<GetWordDefinitionsResponse, DbErr> {
-        let definition = self.repository.get_definition(word.as_str()).await?;
+        let definition = self.repository.get_definition(&word).await?;
 
-        let definition = match definition {
+        let _definition = match definition {
             Some(val) => val,
-            None => self.create_definition(word).await?,
+            None => self.create_definition(&word).await?,
         };
 
-        Ok(definition.to_response())
+        let voc_definition = self.repository.get_voc_definition(&word).await;
+        let response = GetWordDefinitionsResponseBuilder::new(&word, voc_definition).build();
+        Ok(response)
     }
 
     pub async fn invalidate_word(&self, word: String) -> Result<(), DbErr> {
@@ -35,109 +34,50 @@ impl DictionaryService {
             .map(|o| o.map(|audio| audio.to_response()))
     }
 
-    async fn create_definition(&self, word: String) -> Result<Definition, DbErr> {
-        let voc = vocabulary::scrape(word.as_str()).await.unwrap_or_default();
+    async fn create_definition(&self, word: &str) -> Result<DefinitionDoc, DbErr> {
+        let (vocabulary_id, oxford_id ) = tokio::join!(self.create_voc_definition(word), self.create_ox_definition(word));
 
-        let pronunciations = self
-            .repository
-            .replace_vocabulary_audio(word.to_string(), voc.clone().pronunciations)
-            .await?;
+        // let (vocabulary_id, oxford_id) = futures::try_join!(voc_task, ox_task);
 
-        let voc = VocabularyWord::new(voc, pronunciations);
+        let definition = DefinitionDoc {
+            word: word.to_string(),
+            vocabulary_id,
+            oxford_id,
+        };
 
-        let definition = Definition::new(word.clone(), voc);
+        self.repository.replace_definition(&definition).await?;
 
-        self.repository.replace_definition(definition).await?;
-
-        let result = self.repository.get_definition(word.as_str()).await?;
-
-        result.ok_or(DbErr::Unexpected)
+        Ok(definition)
     }
-}
 
-impl Definition {
-    fn to_response(&self) -> GetWordDefinitionsResponse {
-        GetWordDefinitionsResponse {
-            word: self.word.clone(),
-            vocabulary: Some(rpc::dictionary::VocabularyWord {
-                header: self.vocabulary.header.clone(),
-                long_description: self.vocabulary.long_description.clone(),
-                short_description: self.vocabulary.short_description.clone(),
-                pronunciations: self
-                    .vocabulary
-                    .pronunciations
-                    .clone()
-                    .into_iter()
-                    .map(|p| rpc::dictionary::Pronunciation {
-                        variant: rpc::dictionary::pronunciation::PronunciationVariant::from(
-                            p.variant,
-                        ) as i32,
-                        ipa_str: p.ipa_str,
-                        audio_id: p.audio_id.map(|id| id.to_string()),
-                    })
-                    .collect(),
-                definitions: self
-                    .vocabulary
-                    .definitions
-                    .clone()
-                    .into_iter()
-                    .map(|d| rpc::dictionary::VocabularyDefinition {
-                        description: d.description,
-                        short_examples: d.short_examples,
-                        synonyms: d.synonyms,
-                        word_variant: Some(d.variant.into()),
-                    })
-                    .collect(),
-                examples: self
-                    .vocabulary
-                    .examples
-                    .clone()
-                    .into_iter()
-                    .map(|e| rpc::dictionary::VocabularyExample {
-                        author: e.author,
-                        sentence: e.sentence,
-                        source_title: e.source_title,
-                    })
-                    .collect(),
-                other_forms: self.vocabulary.other_forms.clone(),
-            }),
+    async fn create_voc_definition(&self, word: &str) -> Option<ObjectId> {
+        match vocabulary::scrape(word).await {
+            Ok(scraped) => {
+                self.repository
+                    .save_voc_definition(scraped)
+                    .await
+                    .ok()
+                    .flatten()
+            },
+            Err(_) => None
+        }
+    }
+
+    async fn create_ox_definition(&self, word: &str) -> Option<ObjectId> {
+        match oxford::scrape(word).await {
+            Ok(scraped) => {
+                self.repository
+                    .save_ox_definition(scraped)
+                    .await
+                    .ok()
+                    .flatten()
+            },
+            Err(_) => None
         }
     }
 }
 
-impl From<PronunciationVariant> for rpc::dictionary::pronunciation::PronunciationVariant {
-    fn from(value: PronunciationVariant) -> Self {
-        type Prost = rpc::dictionary::pronunciation::PronunciationVariant;
-        match value {
-            PronunciationVariant::Uk => Prost::Uk,
-            PronunciationVariant::Usa => Prost::Usa,
-            PronunciationVariant::Other => Prost::Other,
-        }
-    }
-}
-
-impl From<WordVariant> for rpc::dictionary::vocabulary_definition::WordVariant {
-    fn from(value: WordVariant) -> Self {
-        use rpc::dictionary::vocabulary_definition as Prost;
-        match value {
-            WordVariant::Noun => {
-                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Noun as i32)
-            }
-            WordVariant::Verb => {
-                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Verb as i32)
-            }
-            WordVariant::Adjective => {
-                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adjective as i32)
-            }
-            WordVariant::Adverb => {
-                Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Adverb as i32)
-            }
-            WordVariant::Other(val) => Prost::WordVariant::OtherWordVariant(val),
-        }
-    }
-}
-
-impl Audio {
+impl AudioDoc {
     fn to_response(&self) -> GetAudioResponse {
         GetAudioResponse {
             word: self.word.clone(),

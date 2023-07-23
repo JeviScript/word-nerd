@@ -1,8 +1,10 @@
-use super::{
-    models::{Audio, Definition, Pronunciation},
-    DbErr,
-};
-use crate::vocabulary;
+use crate::models::audio::AudioDoc;
+use crate::models::oxford::DefinitionDoc as OxDefinitionDoc;
+use crate::models::shared::{Pronunciation, PronunciationDoc};
+use crate::models::vocabulary::DefinitionDoc as VocDefinitionDoc;
+use crate::oxford::Definition as OxScrapedDefinition;
+use crate::vocabulary::Definition as VocScrapedDefinition;
+use crate::{db::database::DbErr, models::definition::DefinitionDoc};
 use mongodb::{
     bson::{doc, oid::ObjectId},
     options::ReplaceOptions,
@@ -11,25 +13,39 @@ use mongodb::{
 
 #[derive(Debug)]
 pub struct Repository {
-    pub definitions: Collection<Definition>,
-    pub audio: Collection<Audio>,
+    pub definitions: Collection<DefinitionDoc>,
+    pub audio: Collection<AudioDoc>,
+    pub voc_definitions: Collection<VocDefinitionDoc>,
+    pub ox_definitions: Collection<OxDefinitionDoc>,
 }
 
 impl Repository {
-    pub fn new(db: &Database) -> Self {
+    pub fn new(db: Database) -> Self {
         Repository {
             definitions: db.collection("definitions"),
             audio: db.collection("audio"),
+            voc_definitions: db.collection("vocabulary_definitions"),
+            ox_definitions: db.collection("oxford_definitions"),
         }
     }
 
-    pub async fn get_definition(&self, word: &str) -> Result<Option<Definition>, DbErr> {
+    pub async fn get_definition(&self, word: &str) -> Result<Option<DefinitionDoc>, DbErr> {
         let filter = doc! {"word" : word};
 
         self.definitions
             .find_one(filter, None)
             .await
             .map_err(DbErr::QueryErr)
+    }
+
+    pub async fn get_voc_definition(&self, word: &str) -> Option<VocDefinitionDoc> {
+        let filter = doc! {"id_ref" : word};
+
+        self.voc_definitions
+            .find_one(filter, None)
+            .await
+            .ok()
+            .flatten()
     }
 
     pub async fn delete_definition(&self, word: &str) -> Result<(), DbErr> {
@@ -43,7 +59,7 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn replace_definition(&self, definition: Definition) -> Result<(), DbErr> {
+    pub async fn replace_definition(&self, definition: &DefinitionDoc) -> Result<(), DbErr> {
         let filter = doc! {"word" : &definition.word};
 
         let mut replace_options = ReplaceOptions::default();
@@ -56,22 +72,79 @@ impl Repository {
         Ok(())
     }
 
-    pub async fn replace_vocabulary_audio(
+    pub async fn save_voc_definition(
         &self,
-        word: String,
-        data: Vec<vocabulary::Pronunciation>,
-    ) -> Result<Vec<Pronunciation>, DbErr> {
-        let filter = doc! {"word": word.as_str()};
+        def: VocScrapedDefinition,
+    ) -> Result<Option<ObjectId>, DbErr> {
+        let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
+        let def = VocDefinitionDoc {
+            id: None,
+            id_ref: def.id_ref,
+            header: def.header,
+            pronunciations: pros,
+            other_forms: def.other_forms,
+            short_description: def.short_description,
+            long_description: def.long_description,
+            definitions: def.definitions,
+            examples: def.examples,
+        };
 
-        self.audio
-            .delete_many(filter, None)
+        let filter = doc! {"id_ref" : &def.id_ref};
+        let mut replace_options = ReplaceOptions::default();
+        // inserts when finds None
+        replace_options.upsert = Some(true);
+        let result = self
+            .voc_definitions
+            .replace_one(filter, def, replace_options)
             .await
             .map_err(DbErr::QueryErr)?;
 
+        let object_id = result.upserted_id.and_then(|id| id.as_object_id());
+        Ok(object_id)
+    }
+
+    pub async fn save_ox_definition(
+        &self,
+        def: OxScrapedDefinition,
+    ) -> Result<Option<ObjectId>, DbErr> {
+        let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
+        let def = OxDefinitionDoc {
+            id: None,
+            id_ref: def.id_ref,
+            header: def.header,
+            inflections: def.inflections,
+            note: def.note,
+            grammar_hint: def.grammar_hint,
+            word_variant: def.word_variant,
+            similar_results: def.similar_results,
+            pronunciations: pros,
+            definitions: def.definitions,
+            see_also: def.see_also,
+            word_origin: def.word_origin,
+            idioms: def.idioms,
+            phrasal_verbs: def.phrasal_verbs,
+            veb_forms: def.veb_forms,
+        };
+
+        let filter = doc! {"id_ref" : &def.id_ref};
+        let mut replace_options = ReplaceOptions::default();
+        // inserts when finds None
+        replace_options.upsert = Some(true);
+        let result = self
+            .ox_definitions
+            .replace_one(filter, def, replace_options)
+            .await
+            .map_err(DbErr::QueryErr)?;
+
+        let object_id = result.upserted_id.and_then(|id| id.as_object_id());
+        Ok(object_id)
+    }
+
+    async fn save_audio(&self, word: &str, data: Vec<Pronunciation>) -> Vec<PronunciationDoc> {
         let data: Vec<_> = data
             .into_iter()
             .map(|val| async {
-                let mut result = Pronunciation {
+                let mut result = PronunciationDoc {
                     variant: val.variant,
                     ipa_str: val.ipa_str,
                     audio_id: None,
@@ -79,9 +152,9 @@ impl Repository {
 
                 match val.audio {
                     Some(audio) => {
-                        let audio = Audio {
+                        let audio = AudioDoc {
                             id: None,
-                            word: word.clone(),
+                            word: word.to_string(),
                             content_type: audio.content_type,
                             bytes: audio.bytes,
                         };
@@ -99,14 +172,15 @@ impl Repository {
             })
             .collect();
 
-        let res = futures::future::join_all(data).await;
-        Ok(res)
+        futures::future::join_all(data).await
     }
 
-    pub async fn get_audio(&self, id: String) -> Result<Option<Audio>, DbErr> {
+    pub async fn get_audio(&self, id: String) -> Result<Option<AudioDoc>, DbErr> {
         let object_id = ObjectId::parse_str(id).map_err(DbErr::ParseBsonErr)?;
         let filter = doc! {"_id": object_id};
-        self.audio.find_one(filter, None).await
+        self.audio
+            .find_one(filter, None)
+            .await
             .map_err(DbErr::QueryErr)
     }
 }
