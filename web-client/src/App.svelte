@@ -31,11 +31,10 @@
   onMount(async () => {
     const user = await me();
     if (user) {
-      push("/")
-    } 
-  })
+      push("/");
+    }
+  });
 </script>
-
 
 <main>
   <Router {routes} />

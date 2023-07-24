@@ -1,5 +1,4 @@
 export interface GoogleResponse {
-	clientId: string;
-	credential: string;
+  clientId: string;
+  credential: string;
 }
-

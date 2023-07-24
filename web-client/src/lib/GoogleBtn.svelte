@@ -11,7 +11,9 @@
 
   function initGoogleBtn() {
     const google = window["google"];
-    if (!google) { return; }
+    if (!google) {
+      return;
+    }
     google.accounts.id.initialize({
       client_id:
         "310555099980-g3oicif2up21oalh4h58m7bedsm0crbd.apps.googleusercontent.com",
@@ -26,8 +28,8 @@
 
   onMount(() => {
     window.onload = () => {
-      initGoogleBtn()
-    }
+      initGoogleBtn();
+    };
     initGoogleBtn();
   });
 </script>
