@@ -10,7 +10,9 @@ pub struct GetWordDefinitionsResponse {
     #[prost(string, tag = "1")]
     pub word: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub vocabulary: ::core::option::Option<VocabularyDefinition>,
+    pub vocabulary_definition: ::core::option::Option<VocabularyDefinition>,
+    #[prost(message, optional, tag = "3")]
+    pub oxford_definition: ::core::option::Option<OxfordDefinition>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -37,6 +39,78 @@ pub struct VocabularyDefinition {
 pub struct OxfordDefinition {
     #[prost(string, tag = "1")]
     pub id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub oxford_ref: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub header: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub inflections: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub note: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub word_variant: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub word_origin: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "8")]
+    pub similar_results: ::prost::alloc::vec::Vec<WordRef>,
+    #[prost(message, repeated, tag = "9")]
+    pub pronunciations: ::prost::alloc::vec::Vec<Pronunciation>,
+    #[prost(message, repeated, tag = "10")]
+    pub definitions: ::prost::alloc::vec::Vec<DefinitionGroup>,
+    #[prost(message, repeated, tag = "11")]
+    pub see_also: ::prost::alloc::vec::Vec<WordRef>,
+    #[prost(message, repeated, tag = "12")]
+    pub idioms: ::prost::alloc::vec::Vec<Idiom>,
+    #[prost(message, repeated, tag = "13")]
+    pub phrasal_verbs: ::prost::alloc::vec::Vec<WordRef>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Idiom {
+    #[prost(string, tag = "1")]
+    pub idiom: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "3")]
+    pub notes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(message, repeated, tag = "4")]
+    pub synonyms: ::prost::alloc::vec::Vec<WordRef>,
+    #[prost(string, repeated, tag = "5")]
+    pub examples: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct WordRef {
+    #[prost(string, tag = "1")]
+    pub oxford_ref: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub word: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct DefinitionGroup {
+    #[prost(string, tag = "1")]
+    pub group_title: ::prost::alloc::string::String,
+    #[prost(message, repeated, tag = "2")]
+    pub definitions: ::prost::alloc::vec::Vec<SubDefinition>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SubDefinition {
+    #[prost(string, tag = "1")]
+    pub description: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub use_note: ::prost::alloc::string::String,
+    #[prost(string, repeated, tag = "3")]
+    pub examples: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(message, repeated, tag = "4")]
+    pub see_also: ::prost::alloc::vec::Vec<WordRef>,
+    #[prost(message, repeated, tag = "5")]
+    pub synonyms: ::prost::alloc::vec::Vec<WordRef>,
+    #[prost(string, repeated, tag = "6")]
+    pub extra_examples: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag = "7")]
+    pub extra_synonyms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -88,6 +88,16 @@ impl Repository {
             .flatten()
     }
 
+    pub async fn get_ox_definition(&self, word: &str) -> Option<OxDefinitionDoc> {
+        let filter = doc! {"searched_word" : word};
+
+        self.ox_definitions
+            .find_one(filter, None)
+            .await
+            .ok()
+            .flatten()
+    }
+
     pub async fn delete_definition(&self, word: &str) -> Result<(), DbErr> {
         let filter = doc! {"word" : word};
 

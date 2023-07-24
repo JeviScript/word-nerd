@@ -1,6 +1,5 @@
 use crate::models::oxford::DefinitionGroup;
 use crate::models::oxford::Idiom;
-use crate::models::oxford::SimilarResult;
 use crate::models::oxford::SubDefinition;
 use crate::models::oxford::VebForm;
 use crate::models::oxford::WordRef;
@@ -337,7 +336,7 @@ fn get_definitions(html: &Html) -> Vec<DefinitionGroup> {
         .collect()
 }
 
-fn get_similar_results(html: &Html) -> Vec<SimilarResult> {
+fn get_similar_results(html: &Html) -> Vec<WordRef> {
     html.select(&Css("#relatedentries li a").into())
         .map(|el| {
             let id = el
@@ -356,7 +355,10 @@ fn get_similar_results(html: &Html) -> Vec<SimilarResult> {
                 .trim()
                 .to_string();
 
-            SimilarResult { id, word }
+            WordRef {
+                oxford_ref: id,
+                word,
+            }
         })
         .collect()
 }
@@ -427,7 +429,7 @@ pub struct Definition {
     pub inflections: String,
     pub note: String,
     pub word_variant: String,
-    pub similar_results: Vec<SimilarResult>,
+    pub similar_results: Vec<WordRef>,
     pub pronunciations: Vec<Pronunciation>,
     pub definitions: Vec<DefinitionGroup>,
     pub see_also: Vec<WordRef>,
@@ -443,7 +445,7 @@ pub struct Scraped {
     pub inflections: String,
     pub note: String,
     pub word_variant: String,
-    pub similar_results: Vec<SimilarResult>,
+    pub similar_results: Vec<WordRef>,
     pub pronunciations: Vec<ScrapedPronunciation>,
     pub definitions: Vec<DefinitionGroup>,
     pub see_also: Vec<WordRef>,
@@ -532,13 +534,13 @@ mod tests {
     fn get_similar_results_ok() {
         let html = parse_html(TestHtml::Oxford(OxfordHtml::Cat1));
         let results = get_similar_results(&html);
-        assert_eq!("cat_2", results[0].id);
+        assert_eq!("cat_2", results[0].oxford_ref);
         assert_eq!("Cat", results[0].word);
 
-        assert_eq!("big-cat", results[1].id);
+        assert_eq!("big-cat", results[1].oxford_ref);
         assert_eq!("big cat noun", results[1].word);
 
-        assert_eq!("the-cheshire-cat", results[17].id);
+        assert_eq!("the-cheshire-cat", results[17].oxford_ref);
         assert_eq!("the Cheshire Cat", results[17].word);
     }
 

@@ -13,7 +13,7 @@ pub struct DefinitionDoc {
     pub inflections: String,
     pub note: String,
     pub word_variant: String,
-    pub similar_results: Vec<SimilarResult>,
+    pub similar_results: Vec<WordRef>,
     pub pronunciations: Vec<PronunciationDoc>,
     pub definitions: Vec<DefinitionGroup>,
     pub see_also: Vec<WordRef>,
@@ -25,7 +25,7 @@ pub struct DefinitionDoc {
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct SimilarResult {
-    pub id: String,
+    pub oxford_ref: String,
     pub word: String,
 }
 

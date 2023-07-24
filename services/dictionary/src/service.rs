@@ -19,7 +19,10 @@ impl DictionaryService {
         };
 
         let voc_definition = self.repository.get_voc_definition(&word).await;
-        let response = GetWordDefinitionsResponseBuilder::new(&word, voc_definition).build();
+        let oxford_definition = self.repository.get_ox_definition(&word).await;
+        let response =
+            GetWordDefinitionsResponseBuilder::new(&word, voc_definition, oxford_definition)
+                .build();
         Ok(response)
     }
 

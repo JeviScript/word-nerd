@@ -13,7 +13,8 @@ message GetWordDefinitionsRequest {
 
 message GetWordDefinitionsResponse {
     string word = 1; 
-    VocabularyDefinition vocabulary = 2;
+    VocabularyDefinition vocabulary_definition = 2;
+    OxfordDefinition oxford_definition = 3;
 }
 
 message VocabularyDefinition {
@@ -29,6 +30,46 @@ message VocabularyDefinition {
 
 message OxfordDefinition {
   string id = 1;
+  string oxford_ref = 2;
+  string header = 3;
+  string inflections = 4;
+  string note = 5;
+  string word_variant = 6;
+  string word_origin = 7;
+  repeated WordRef similar_results = 8;
+  repeated Pronunciation pronunciations = 9;
+  repeated DefinitionGroup definitions = 10;
+  repeated WordRef see_also = 11;
+  repeated Idiom idioms = 12;
+  repeated WordRef phrasal_verbs = 13;
+}
+
+message Idiom {
+  string idiom = 1;
+  string description = 2;
+  repeated string notes = 3;
+  repeated WordRef synonyms = 4;
+  repeated string examples = 5;
+}
+
+message WordRef {
+  string oxford_ref = 1;
+  string word = 2;
+}
+
+message DefinitionGroup {
+  string group_title = 1;
+  repeated SubDefinition definitions = 2;
+}
+
+message SubDefinition {
+  string description = 1;
+  string use_note = 2;
+  repeated string examples = 3;
+  repeated WordRef see_also = 4;
+  repeated WordRef synonyms = 5;
+  repeated string extra_examples = 6;
+  repeated string extra_synonyms = 7;
 }
 
 message Pronunciation {
