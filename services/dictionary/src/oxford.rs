@@ -45,7 +45,6 @@ fn scrape_html(html: &str) -> Scraped {
         header: get_header(&html),
         inflections: get_inflections(&html),
         note: get_note(&html),
-        grammar_hint: get_grammar_hint(&html),
         word_variant: get_word_variant(&html),
         similar_results: get_similar_results(&html),
         pronunciations: get_pronunciations(&html),
@@ -84,15 +83,7 @@ fn get_word_variant(html: &Html) -> String {
 }
 
 fn get_note(html: &Html) -> String {
-    html.select(&Css("div.entry .labels:not(.idioms .labels)").into())
-        .next()
-        .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
-        .trim()
-        .to_string()
-}
-
-fn get_grammar_hint(html: &Html) -> String {
-    html.select(&Css("div.entry .grammar").into())
+    html.select(&Css("div.entry .labels:not(.idioms .labels):not(li .labels)").into())
         .next()
         .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
         .trim()
@@ -215,7 +206,7 @@ fn get_phrasal_verbs(html: &Html) -> Vec<WordRef> {
 }
 
 fn get_pronunciations(html: &Html) -> Vec<ScrapedPronunciation> {
-    html.select(&Css(".phonetics > div").into())
+    html.select(&Css(".webtop >.phonetics > div").into())
         .map(|el| {
             let variant = match el.value().attr("geo") {
                 Some("br") => PronunciationVariant::Uk,
@@ -435,7 +426,6 @@ pub struct Definition {
     pub header: String,
     pub inflections: String,
     pub note: String,
-    pub grammar_hint: String,
     pub word_variant: String,
     pub similar_results: Vec<SimilarResult>,
     pub pronunciations: Vec<Pronunciation>,
@@ -452,7 +442,6 @@ pub struct Scraped {
     pub header: String,
     pub inflections: String,
     pub note: String,
-    pub grammar_hint: String,
     pub word_variant: String,
     pub similar_results: Vec<SimilarResult>,
     pub pronunciations: Vec<ScrapedPronunciation>,
@@ -471,7 +460,6 @@ impl Scraped {
             header: self.header,
             inflections: self.inflections,
             note: self.note,
-            grammar_hint: self.grammar_hint,
             word_variant: self.word_variant,
             similar_results: self.similar_results,
             pronunciations: pros,
@@ -527,6 +515,17 @@ mod tests {
 
         let html = parse_html(TestHtml::Oxford(OxfordHtml::Cat1));
         assert_eq!("", get_note(&html).as_str());
+
+        let html = parse_html(TestHtml::Oxford(OxfordHtml::Take1));
+        assert_eq!("", get_note(&html).as_str());
+    }
+
+    #[test]
+    fn get_pronunciations_ok() {
+        let html = parse_html(TestHtml::Oxford(OxfordHtml::Take1));
+        let pros = get_pronunciations(&html);
+
+        assert_eq!(pros.len(), 2);
     }
 
     #[test]
@@ -541,12 +540,6 @@ mod tests {
 
         assert_eq!("the-cheshire-cat", results[17].id);
         assert_eq!("the Cheshire Cat", results[17].word);
-    }
-
-    #[test]
-    fn get_grammar_hint_ok() {
-        let html = parse_html(TestHtml::Oxford(OxfordHtml::Refrain1));
-        assert_eq!("[intransitive]", get_grammar_hint(&html).as_str());
     }
 
     #[test]

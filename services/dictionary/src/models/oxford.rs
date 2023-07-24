@@ -12,7 +12,6 @@ pub struct DefinitionDoc {
     pub header: String,
     pub inflections: String,
     pub note: String,
-    pub grammar_hint: String,
     pub word_variant: String,
     pub similar_results: Vec<SimilarResult>,
     pub pronunciations: Vec<PronunciationDoc>,

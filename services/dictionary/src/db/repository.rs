@@ -171,7 +171,6 @@ impl Repository {
             searched_word,
             inflections: def.inflections,
             note: def.note,
-            grammar_hint: def.grammar_hint,
             word_variant: def.word_variant,
             similar_results: def.similar_results,
             pronunciations: pros,
