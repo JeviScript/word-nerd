@@ -163,9 +163,9 @@ mod get_word_response {
         Other(String),
     }
 
-    impl From<Option<rpc::dictionary::vocabulary_definition::WordVariant>> for WordVariant {
-        fn from(value: Option<rpc::dictionary::vocabulary_definition::WordVariant>) -> Self {
-            use rpc::dictionary::vocabulary_definition as Rpc;
+    impl From<Option<rpc::dictionary::vocabulary_sub_definition::WordVariant>> for WordVariant {
+        fn from(value: Option<rpc::dictionary::vocabulary_sub_definition::WordVariant>) -> Self {
+            use rpc::dictionary::vocabulary_sub_definition as Rpc;
             match value {
                 Some(Rpc::WordVariant::WordVariant(known)) => {
                     match Rpc::KnownWordVariant::from_i32(known) {

@@ -41,7 +41,7 @@ pub async fn scrape(word: &str) -> Result<Definition, ScrapeErr> {
 fn scrape_html(html: &str) -> Scraped {
     let html = Html::parse_document(html);
     Scraped {
-        ref_id: get_id(&html),
+        oxford_ref: get_id(&html),
         header: get_header(&html),
         inflections: get_inflections(&html),
         note: get_note(&html),
@@ -93,7 +93,7 @@ fn get_note(html: &Html) -> String {
 fn get_see_also(html: &Html) -> Vec<WordRef> {
     html.select(&Css("div.entry .senses_multiple > .xrefs a").into())
         .map(|el| {
-            let id_ref = el
+            let oxford_ref = el
                 .value()
                 .attr("href")
                 .unwrap_or_default()
@@ -104,7 +104,7 @@ fn get_see_also(html: &Html) -> Vec<WordRef> {
 
             let word = el.text().next().unwrap_or_default().to_string();
 
-            WordRef { id_ref, word }
+            WordRef { oxford_ref, word }
         })
         .collect()
 }
@@ -148,7 +148,7 @@ fn get_idioms(html: &Html) -> Vec<Idiom> {
             let synonyms = el
                 .select(&Css(".xrefs[xt='nsyn'] a").into())
                 .map(|el| {
-                    let id_ref = el
+                    let oxford_ref = el
                         .value()
                         .attr("href")
                         .unwrap_or_default()
@@ -157,7 +157,7 @@ fn get_idioms(html: &Html) -> Vec<Idiom> {
                         .unwrap_or_default()
                         .to_string();
                     let word = el.select(&Css(".xh").into()).first_text();
-                    WordRef { id_ref, word }
+                    WordRef { oxford_ref, word }
                 })
                 .collect();
 
@@ -185,7 +185,7 @@ fn get_idioms(html: &Html) -> Vec<Idiom> {
 fn get_phrasal_verbs(html: &Html) -> Vec<WordRef> {
     html.select(&Css(".phrasal_verb_links a").into())
         .map(|el| {
-            let id_ref = el
+            let oxford_ref = el
                 .value()
                 .attr("href")
                 .unwrap_or_default()
@@ -200,7 +200,7 @@ fn get_phrasal_verbs(html: &Html) -> Vec<WordRef> {
                 .map_or_else(|| "", |el| el.text().next().unwrap_or_default())
                 .to_string();
 
-            WordRef { id_ref, word }
+            WordRef { oxford_ref, word }
         })
         .collect()
 }
@@ -298,18 +298,18 @@ fn get_definitions(html: &Html) -> Vec<DefinitionGroup> {
                     let see_also = el
                         .select(&Css(".xrefs[xt='see'] a").into())
                         .map(|el| {
-                            let id_ref = el.href_last_part();
+                            let oxford_ref = el.href_last_part();
                             let word = el.select(&Css("span").into()).join_text();
-                            WordRef { id_ref, word }
+                            WordRef { oxford_ref, word }
                         })
                         .collect();
 
                     let synonyms = el
                         .select(&Css(".xrefs[xt='syn'] a").into())
                         .map(|el| {
-                            let id_ref = el.href_last_part();
+                            let oxford_ref = el.href_last_part();
                             let word = el.select(&Css("span").into()).join_text();
-                            WordRef { id_ref, word }
+                            WordRef { oxford_ref, word }
                         })
                         .collect();
 
@@ -422,7 +422,7 @@ fn get_word_url(word: &str) -> String {
 }
 
 pub struct Definition {
-    pub id_ref: String,
+    pub oxford_ref: String,
     pub header: String,
     pub inflections: String,
     pub note: String,
@@ -438,7 +438,7 @@ pub struct Definition {
 }
 
 pub struct Scraped {
-    pub ref_id: String,
+    pub oxford_ref: String,
     pub header: String,
     pub inflections: String,
     pub note: String,
@@ -456,7 +456,7 @@ pub struct Scraped {
 impl Scraped {
     fn into_definition(self, pros: Vec<Pronunciation>) -> Definition {
         Definition {
-            id_ref: self.ref_id,
+            oxford_ref: self.oxford_ref,
             header: self.header,
             inflections: self.inflections,
             note: self.note,
@@ -553,9 +553,9 @@ mod tests {
         let html = parse_html(TestHtml::Oxford(OxfordHtml::Cat1));
         let results = get_see_also(&html);
         assert_eq!("fat cat", results[0].word);
-        assert_eq!("fat-cat", results[0].id_ref);
+        assert_eq!("fat-cat", results[0].oxford_ref);
         assert_eq!("wildcat", results[1].word);
-        assert_eq!("wildcat_3", results[1].id_ref);
+        assert_eq!("wildcat_3", results[1].oxford_ref);
     }
 
     #[test]
@@ -598,7 +598,7 @@ mod tests {
             "(US English like the cat that got/ate/swallowed the canary)"
         );
         assert_eq!(&idiom.description, "very pleased with yourself");
-        assert_eq!(&idiom.synonyms[0].id_ref, "smug");
+        assert_eq!(&idiom.synonyms[0].oxford_ref, "smug");
         assert_eq!(&idiom.synonyms[0].word, "smug");
         assert_eq!(
             &idiom.examples[0],
@@ -620,7 +620,7 @@ mod tests {
         let verbs = get_phrasal_verbs(&html);
 
         assert_eq!(verbs.len(), 5);
-        assert_eq!(&verbs[0].id_ref, "fling-off#flingoff2_e");
+        assert_eq!(&verbs[0].oxford_ref, "fling-off#flingoff2_e");
         assert_eq!(&verbs[0].word, "fling off");
     }
 
@@ -705,7 +705,7 @@ mod tests {
         );
         assert_eq!(defs[0].definitions[0].see_also.len(), 8);
         assert_eq!(
-            &defs[0].definitions[0].see_also[0].id_ref,
+            &defs[0].definitions[0].see_also[0].oxford_ref,
             "the-cheshire-cat"
         );
         assert_eq!(&defs[0].definitions[0].see_also[0].word, "the Cheshire Cat");
@@ -715,7 +715,7 @@ mod tests {
         assert_eq!(defs.len(), 1);
         assert_eq!(defs[0].definitions.len(), 3);
         assert_eq!(defs[0].definitions[0].synonyms.len(), 1);
-        assert_eq!(&defs[0].definitions[0].synonyms[0].id_ref, "hurl");
+        assert_eq!(&defs[0].definitions[0].synonyms[0].oxford_ref, "hurl");
         assert_eq!(&defs[0].definitions[0].synonyms[0].word, "hurl");
         assert_eq!(defs[0].definitions[0].extra_examples.len(), 2);
         assert_eq!(

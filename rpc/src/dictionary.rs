@@ -10,25 +10,33 @@ pub struct GetWordDefinitionsResponse {
     #[prost(string, tag = "1")]
     pub word: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
-    pub vocabulary: ::core::option::Option<VocabularyWord>,
+    pub vocabulary: ::core::option::Option<VocabularyDefinition>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct VocabularyWord {
+pub struct VocabularyDefinition {
     #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
     pub header: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag = "2")]
+    #[prost(message, repeated, tag = "3")]
     pub pronunciations: ::prost::alloc::vec::Vec<Pronunciation>,
-    #[prost(string, repeated, tag = "3")]
+    #[prost(string, repeated, tag = "4")]
     pub other_forms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(string, tag = "4")]
-    pub short_description: ::prost::alloc::string::String,
     #[prost(string, tag = "5")]
+    pub short_description: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
     pub long_description: ::prost::alloc::string::String,
-    #[prost(message, repeated, tag = "6")]
-    pub definitions: ::prost::alloc::vec::Vec<VocabularyDefinition>,
     #[prost(message, repeated, tag = "7")]
+    pub definitions: ::prost::alloc::vec::Vec<VocabularySubDefinition>,
+    #[prost(message, repeated, tag = "8")]
     pub examples: ::prost::alloc::vec::Vec<VocabularyExample>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct OxfordDefinition {
+    #[prost(string, tag = "1")]
+    pub id: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -84,18 +92,18 @@ pub mod pronunciation {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct VocabularyDefinition {
+pub struct VocabularySubDefinition {
     #[prost(string, tag = "6")]
     pub description: ::prost::alloc::string::String,
     #[prost(string, repeated, tag = "7")]
     pub short_examples: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
     #[prost(string, repeated, tag = "8")]
     pub synonyms: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    #[prost(oneof = "vocabulary_definition::WordVariant", tags = "1, 2")]
-    pub word_variant: ::core::option::Option<vocabulary_definition::WordVariant>,
+    #[prost(oneof = "vocabulary_sub_definition::WordVariant", tags = "1, 2")]
+    pub word_variant: ::core::option::Option<vocabulary_sub_definition::WordVariant>,
 }
-/// Nested message and enum types in `VocabularyDefinition`.
-pub mod vocabulary_definition {
+/// Nested message and enum types in `VocabularySubDefinition`.
+pub mod vocabulary_sub_definition {
     #[derive(
         Clone,
         Copy,

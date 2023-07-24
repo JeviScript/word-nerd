@@ -13,20 +13,23 @@ message GetWordDefinitionsRequest {
 
 message GetWordDefinitionsResponse {
     string word = 1; 
-    VocabularyWord vocabulary = 2;
+    VocabularyDefinition vocabulary = 2;
 }
 
-message VocabularyWord {
-  string header = 1;
-  repeated Pronunciation pronunciations = 2;
-  repeated string other_forms = 3;
-  string short_description = 4;
-  string long_description = 5;
-  repeated VocabularyDefinition definitions = 6;
-  repeated VocabularyExample examples = 7;
+message VocabularyDefinition {
+  string id = 1;
+  string header = 2;
+  repeated Pronunciation pronunciations = 3;
+  repeated string other_forms = 4;
+  string short_description = 5;
+  string long_description = 6;
+  repeated VocabularySubDefinition definitions = 7;
+  repeated VocabularyExample examples = 8;
 }
 
-
+message OxfordDefinition {
+  string id = 1;
+}
 
 message Pronunciation {
   enum PronunciationVariant {
@@ -40,7 +43,7 @@ message Pronunciation {
   optional string audio_id = 3;
 }
 
-message VocabularyDefinition { 
+message VocabularySubDefinition { 
   enum KnownWordVariant {
     Noun = 0;
     Verb = 1;

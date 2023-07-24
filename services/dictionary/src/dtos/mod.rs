@@ -10,8 +10,9 @@ pub struct GetWordDefinitionsResponseBuilder {
 }
 
 impl VocDefinitionDoc {
-    pub fn to_response(&self) -> rpc::dictionary::VocabularyWord {
-        rpc::dictionary::VocabularyWord {
+    pub fn to_response(&self) -> rpc::dictionary::VocabularyDefinition {
+        rpc::dictionary::VocabularyDefinition {
+            id: self.id.unwrap_or_default().to_string(),
             header: self.header.clone(),
             long_description: self.long_description.clone(),
             short_description: self.short_description.clone(),
@@ -30,7 +31,7 @@ impl VocDefinitionDoc {
                 .definitions
                 .clone()
                 .into_iter()
-                .map(|d| rpc::dictionary::VocabularyDefinition {
+                .map(|d| rpc::dictionary::VocabularySubDefinition {
                     description: d.description,
                     short_examples: d.short_examples,
                     synonyms: d.synonyms,
@@ -68,9 +69,9 @@ impl GetWordDefinitionsResponseBuilder {
     }
 }
 
-impl From<WordVariant> for rpc::dictionary::vocabulary_definition::WordVariant {
+impl From<WordVariant> for rpc::dictionary::vocabulary_sub_definition::WordVariant {
     fn from(value: WordVariant) -> Self {
-        use rpc::dictionary::vocabulary_definition as Prost;
+        use rpc::dictionary::vocabulary_sub_definition as Prost;
         match value {
             WordVariant::Noun => {
                 Prost::WordVariant::WordVariant(Prost::KnownWordVariant::Noun as i32)

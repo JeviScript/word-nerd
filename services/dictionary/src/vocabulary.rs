@@ -15,7 +15,7 @@ static EXAMPLES_BASE_URL: &str = "https://corpus.vocabulary.com/api/1.0/examples
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Definition {
-    pub id_ref: String,
+    pub voc_ref: String,
     pub header: String,
     pub pronunciations: Vec<Pronunciation>,
     pub other_forms: Vec<String>,
@@ -124,7 +124,7 @@ pub async fn scrape(word: &str) -> Result<Definition, ScrapeErr> {
     let pronunciations = scrape_pronunciations(html_doc).await;
 
     let word = Definition {
-        id_ref: word.to_string(),
+        voc_ref: word.to_string(),
         header,
         pronunciations,
         other_forms,

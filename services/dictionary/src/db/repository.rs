@@ -79,7 +79,7 @@ impl Repository {
     }
 
     pub async fn get_voc_definition(&self, word: &str) -> Option<VocDefinitionDoc> {
-        let filter = doc! {"id_ref" : word};
+        let filter = doc! {"voc_ref" : word};
 
         self.voc_definitions
             .find_one(filter, None)
@@ -117,10 +117,10 @@ impl Repository {
         def: VocScrapedDefinition,
         searched_word: String,
     ) -> Result<Option<ObjectId>, DbErr> {
-        let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
+        let pros = self.save_audio(&def.voc_ref, def.pronunciations).await;
         let def = VocDefinitionDoc {
             id: None,
-            id_ref: def.id_ref,
+            voc_ref: def.voc_ref,
             searched_word,
             header: def.header,
             pronunciations: pros,
@@ -131,7 +131,7 @@ impl Repository {
             examples: def.examples,
         };
 
-        let filter = doc! {"id_ref" : &def.id_ref};
+        let filter = doc! {"voc_ref" : &def.voc_ref};
         let mut replace_options = ReplaceOptions::default();
         // inserts when finds None
         replace_options.upsert = Some(true);
@@ -163,10 +163,10 @@ impl Repository {
         def: OxScrapedDefinition,
         searched_word: String,
     ) -> Result<Option<ObjectId>, DbErr> {
-        let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
+        let pros = self.save_audio(&def.oxford_ref, def.pronunciations).await;
         let def = OxDefinitionDoc {
             id: None,
-            id_ref: def.id_ref,
+            oxford_ref: def.oxford_ref,
             header: def.header,
             searched_word,
             inflections: def.inflections,
@@ -182,7 +182,7 @@ impl Repository {
             veb_forms: def.veb_forms,
         };
 
-        let filter = doc! {"id_ref" : &def.id_ref};
+        let filter = doc! {"oxford_ref" : &def.oxford_ref};
         let mut replace_options = ReplaceOptions::default();
         // inserts when finds None
         replace_options.upsert = Some(true);
