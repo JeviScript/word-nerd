@@ -8,6 +8,7 @@ pub struct DefinitionDoc {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
     pub id_ref: String,
+    pub searched_word: String,
     pub header: String,
     pub inflections: String,
     pub note: String,

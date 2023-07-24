@@ -46,6 +46,38 @@ impl Repository {
             .map_err(DbErr::QueryErr)
     }
 
+    pub async fn get_voc_definition_id(&self, word: &str) -> Option<ObjectId> {
+        let filter = doc! {"searched_word" : word};
+        self.voc_definitions
+            .clone_with_type::<Id>()
+            .find_one(
+                filter.clone(),
+                FindOneOptions::builder()
+                    .projection(doc! {"_id": 1})
+                    .build(),
+            )
+            .await
+            .ok()
+            .flatten()
+            .map(|val| val.id)
+    }
+
+    pub async fn get_ox_definition_id(&self, word: &str) -> Option<ObjectId> {
+        let filter = doc! {"searched_word" : word};
+        self.ox_definitions
+            .clone_with_type::<Id>()
+            .find_one(
+                filter.clone(),
+                FindOneOptions::builder()
+                    .projection(doc! {"_id": 1})
+                    .build(),
+            )
+            .await
+            .ok()
+            .flatten()
+            .map(|val| val.id)
+    }
+
     pub async fn get_voc_definition(&self, word: &str) -> Option<VocDefinitionDoc> {
         let filter = doc! {"id_ref" : word};
 
@@ -83,11 +115,13 @@ impl Repository {
     pub async fn save_voc_definition(
         &self,
         def: VocScrapedDefinition,
+        searched_word: String,
     ) -> Result<Option<ObjectId>, DbErr> {
         let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
         let def = VocDefinitionDoc {
             id: None,
             id_ref: def.id_ref,
+            searched_word,
             header: def.header,
             pronunciations: pros,
             other_forms: def.other_forms,
@@ -127,12 +161,14 @@ impl Repository {
     pub async fn save_ox_definition(
         &self,
         def: OxScrapedDefinition,
+        searched_word: String,
     ) -> Result<Option<ObjectId>, DbErr> {
         let pros = self.save_audio(&def.id_ref, def.pronunciations).await;
         let def = OxDefinitionDoc {
             id: None,
             id_ref: def.id_ref,
             header: def.header,
+            searched_word,
             inflections: def.inflections,
             note: def.note,
             grammar_hint: def.grammar_hint,
