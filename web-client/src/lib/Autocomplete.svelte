@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Search } from "carbon-components-svelte";
   import { get_word } from "../api";
   let value = "";
 
@@ -10,7 +9,7 @@
 
 <div>
   <form on:submit|preventDefault={onSubmit}>
-    <Search bind:value />
+    <input bind:value />
     <button class="button">Search</button>
   </form>
 </div>

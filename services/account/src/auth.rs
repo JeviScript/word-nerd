@@ -39,7 +39,7 @@ pub trait Auth {
 
 impl Auth for User {
     fn get_claims(&self) -> Claims {
-        let valid_until = Utc::now() + Duration::hours(12);
+        let valid_until = Utc::now() + Duration::days(7);
         Claims {
             sub: self.google_id.clone(),
             exp: usize::try_from(valid_until.timestamp())

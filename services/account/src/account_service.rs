@@ -78,8 +78,6 @@ impl Account for AccountService {
             .db
             .get_collection::<User>(CollectionName::Users)
             .await
-            // google_id is a magic string here
-            // TODO provide type safety for field names
             .find_one(doc! {"google_id": claims.sub}, None)
             .await
             .map_err(|_| Status::internal(""))?
