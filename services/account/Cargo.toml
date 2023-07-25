@@ -18,7 +18,7 @@ jwt = { version = "0.16.0", features = ["openssl"] }
 openssl = "0.10.45"
 base64 = "0.21.0"
 reqwest = { version = "0.11.14", features = ["json", "rustls-tls"] }
-tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.29.1", features = ["rt-multi-thread", "macros"] }
 serde = { version = "1.0.152", features = ["derive"] }
 serde_json = "1.0.93"
 mongodb = { version = "2.5.0", features = ["bson-chrono-0_4"]}
