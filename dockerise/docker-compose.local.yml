@@ -23,6 +23,7 @@ services:
       - ../web-api:/code/web-api
       - /code/web-api/target
       - ../rpc/:/code/rpc/
+      - ../common-rs/:/code/common-rs/
     working_dir: /code/web-api
     entrypoint: ["cargo", "watch", "-x", "'run'"]
     environment:
@@ -38,6 +39,7 @@ services:
       - ../services/account:/code/services/account 
       - /code/services/account/target
       - ../rpc/:/code/rpc/
+      - ../common-rs/:/code/common-rs/
     working_dir: /code/services/account
     entrypoint: ["cargo", "watch", "-x", "'run'"]
     environment:
@@ -53,9 +55,25 @@ services:
       - ../services/dictionary:/code/services/dictionary
       - /code/services/dictionary/target
       - ../rpc/:/code/rpc/
+      - ../common-rs/:/code/common-rs/
     working_dir: /code/services/dictionary
     entrypoint: ["cargo", "watch", "-x", "'run'"]
     environment:
       DB_CONNECTION_URI: mongodb://root:root@db:27017
       VOCABULARY_URL: https://www.vocabulary.com/dictionary
+
+  search:
+    build:
+      context: .
+      dockerfile: ./local.Dockerfile
+      target: rust_ms
+    volumes:
+      - ../services/search:/code/services/search
+      - /code/services/search/target
+      - ../common-rs/:/code/common-rs/
+    working_dir: /code/services/search
+    entrypoint: ["cargo", "watch", "-x", "'run'"]
+    environment:
+      MEILISEARCH_CONNECTION_URI: http://meilisearch:7700
+
 

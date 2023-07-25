@@ -9,6 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 rpc = { path = "../../rpc" }
+common-rs = { path = "../../common-rs"}
 
 tonic = "0.9.1"
 dotenv = "0.15.0"

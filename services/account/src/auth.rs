@@ -1,5 +1,6 @@
 use crate::{db::models::User, Env};
 use chrono::{Duration, Utc};
+use common_rs::EnvStore;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +16,7 @@ pub fn create_jwt<T: Auth>(auth: &T) -> Result<String, AuthErr> {
     let token = encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(Env::get().jwt_secret.as_bytes()),
+        &EncodingKey::from_secret(Env::vars().jwt_secret.as_bytes()),
     )
     .map_err(AuthErr::EncodeTokenErr)?;
 
@@ -25,7 +26,7 @@ pub fn create_jwt<T: Auth>(auth: &T) -> Result<String, AuthErr> {
 pub fn verify(token: String) -> Result<Claims, AuthErr> {
     let decoded = decode::<Claims>(
         &token,
-        &DecodingKey::from_secret(Env::get().jwt_secret.as_bytes()),
+        &DecodingKey::from_secret(Env::vars().jwt_secret.as_bytes()),
         &Validation::default(),
     )
     .map_err(AuthErr::DecodeTokenErr)?;

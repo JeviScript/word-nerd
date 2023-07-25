@@ -47,6 +47,20 @@ services:
       test: "grpc_health_probe --addr=http://0.0.0.0:80 --service=dictionary.Dictionary"
       start_period: 15s
 
+  search:
+    image: word-nerd/search
+    container_name: word-nerd-search
+    ports:
+      - "80"
+    depends_on:
+      - meilisearch
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.2
+    container_name: meilisearch
+    ports:
+      - "7700:7700"
+
   db:
     image: mongo
     container_name: word-nerd-db

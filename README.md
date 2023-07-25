@@ -4,6 +4,7 @@
 # Structure
     .
     ├── dockerise               # Docker and script files to spin up the project locally.
+    ├── common-rs               # Rust lib for shared utilities across all the rust projects here
     ├── rpc                     # Rust project with protobuf files to generate types for gRPC communication
     ├── services                # Microservices
     │   ├── account             # Rust microservise. Handles login/authentication. Database: mongodb

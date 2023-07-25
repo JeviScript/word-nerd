@@ -1,8 +1,8 @@
-use std::sync::OnceLock;
-
 use crate::{account_service::AccountService, db::Db};
+use common_rs::{env, EnvStore};
 use dotenv::dotenv;
 use rpc::account::account_server::AccountServer;
+use std::sync::OnceLock;
 use tonic::transport::Server;
 
 mod account_service;
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .set_serving::<AccountServer<AccountService>>()
         .await;
 
-    let db = Db::new(Env::get().db_connection_uri.clone(), "account").await;
+    let db = Db::new(Env::vars().db_connection_uri.clone(), "account").await;
 
     let service = AccountService::new(db);
 
@@ -42,31 +42,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// TODO reuse
-#[derive(Debug)]
-struct Env {
+#[derive(Debug, Clone)]
+pub struct Env {
     pub db_connection_uri: String,
     pub jwt_secret: String,
 }
 
-impl Env {
-    // Can panic !
+impl EnvStore for Env {
     fn new() -> Self {
-        use std::env;
-        let to_panic =
-            |env_var_name: &str| panic!("Missing requried env variable: {}", env_var_name);
         Env {
-            db_connection_uri: env::var("DB_CONNECTION_URI")
-                .unwrap_or_else(|_| to_panic("DB_CONNECTION_URI")),
-
-            jwt_secret: env::var("JWT_SECRET").unwrap_or_else(|_| to_panic("JWT_SECRET")),
+            db_connection_uri: env::required("DB_CONNECTION_URI"),
+            jwt_secret: env::required("JWT_SECRET"),
         }
-    }
-
-    fn get() -> &'static Self {
-        ENV.get().expect(
-            "ENV has to be initiallized at this point.
-            Forgot to initialize in the main function?",
-        )
     }
 }

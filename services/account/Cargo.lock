@@ -8,6 +8,7 @@ version = "0.1.0"
 dependencies = [
  "base64 0.21.0",
  "chrono",
+ "common-rs",
  "dotenv",
  "jsonwebtoken",
  "jwt",
@@ -249,6 +250,10 @@ dependencies = [
  "termcolor",
  "unicode-width",
 ]
+
+[[package]]
+name = "common-rs"
+version = "0.1.0"
 
 [[package]]
 name = "convert_case"

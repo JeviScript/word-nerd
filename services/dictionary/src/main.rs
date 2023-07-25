@@ -1,4 +1,5 @@
 use crate::env::Env;
+use common_rs::EnvStore;
 use db::database::get_database_client;
 use db::repository::Repository;
 use rpc::dictionary::{
@@ -6,7 +7,6 @@ use rpc::dictionary::{
     GetAudioRequest, GetAudioResponse, GetWordDefinitionsRequest, GetWordDefinitionsResponse,
     InvalidateWordRequest, InvalidateWordResponse,
 };
-use std::sync::OnceLock;
 use tonic::{transport::Server, Request, Response, Status};
 
 mod cloudflare_bypasser;
@@ -21,9 +21,6 @@ mod vocabulary;
 
 #[cfg(test)]
 mod tests;
-
-// global vars
-static ENV: OnceLock<Env> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct DictionaryService {
@@ -92,8 +89,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     health_reporter
         .set_serving::<DictionaryServer<DictionaryService>>()
         .await;
-
-    Env::init();
 
     let db = get_database_client(Env::vars().db_connection_uri, "dictionary").await;
     let repository = Repository::new(db);
