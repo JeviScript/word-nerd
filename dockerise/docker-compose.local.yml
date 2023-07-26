@@ -9,7 +9,7 @@ services:
       target: node_base
     volumes: 
       - ../web-client:/code/web-client
-      - /code/web-client/node_modules
+      - client-v:/code/web-client/node_modules
     working_dir: /code/web-client
     entrypoint: ["npm", "run", "dev"]
     env_file: ../.env
@@ -21,7 +21,7 @@ services:
       target: rust_base
     volumes: 
       - ../web-api:/code/web-api
-      - /code/web-api/target
+      - api-v:/code/web-api/target
       - ../rpc/:/code/rpc/
       - ../common-rs/:/code/common-rs/
     working_dir: /code/web-api
@@ -37,7 +37,7 @@ services:
       target: rust_ms
     volumes: 
       - ../services/account:/code/services/account 
-      - /code/services/account/target
+      - account-v:/code/services/account/target
       - ../rpc/:/code/rpc/
       - ../common-rs/:/code/common-rs/
     working_dir: /code/services/account
@@ -53,7 +53,7 @@ services:
       target: rust_ms
     volumes: 
       - ../services/dictionary:/code/services/dictionary
-      - /code/services/dictionary/target
+      - dict-v:/code/services/dictionary/target
       - ../rpc/:/code/rpc/
       - ../common-rs/:/code/common-rs/
     working_dir: /code/services/dictionary
@@ -69,11 +69,12 @@ services:
       target: rust_ms
     volumes:
       - ../services/search:/code/services/search
-      - /code/services/search/target
+      - search-v:/code/services/search/target
       - ../common-rs/:/code/common-rs/
     working_dir: /code/services/search
     entrypoint: ["cargo", "watch", "-x", "'run'"]
     environment:
+      RUST_BACKTRACE: 1
       MEILISEARCH_CONNECTION_URI: http://meilisearch:7700
       MEILI_MASTER_KEY: 'mySuperSecretKey'
 
@@ -81,3 +82,9 @@ services:
     environment:
       MEILI_MASTER_KEY: 'mySuperSecretKey'
 
+volumes:
+  search-v:
+  dict-v:
+  account-v:
+  api-v:
+  client-v:
