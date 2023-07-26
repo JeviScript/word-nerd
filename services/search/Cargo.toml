@@ -6,5 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+common-rs = { path = "../../common-rs"}
+
 meilisearch-sdk = "0.24.1"
 tokio = { version = "1.29.1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1.0.175", features = ["derive"] }

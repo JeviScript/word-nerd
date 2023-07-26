@@ -75,5 +75,9 @@ services:
     entrypoint: ["cargo", "watch", "-x", "'run'"]
     environment:
       MEILISEARCH_CONNECTION_URI: http://meilisearch:7700
+      MEILI_MASTER_KEY: 'mySuperSecretKey'
 
+  meilisearch:
+    environment:
+      MEILI_MASTER_KEY: 'mySuperSecretKey'
 
